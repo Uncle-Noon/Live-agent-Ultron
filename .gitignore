@@ -1,0 +1,15 @@
+# Environment variables - NEVER commit API keys
+.env
+.env.local
+.env.*.local
+
+# Node dependencies
+node_modules/
+
+# Logs
+npm-debug.log*
+nodemon-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db

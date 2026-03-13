@@ -565,7 +565,8 @@
         messageInput.focus();
       });
 
-      form.addEventListener("submit", async (event) => {
+      form.addEventListener("submit", async (event) => 
+      {
         event.preventDefault();
         const message = messageInput.value.trim();
         if (!message) {
@@ -598,7 +599,8 @@
           }
 
           const data = await res.json();
-          const result = data && data.result ? data.result : JSON.stringify(data);
+          const resultObj = data.result;
+const result = `Intent: ${resultObj.intent}\n\n${resultObj.reply}`;
 
           appendMessage(
             "bot",

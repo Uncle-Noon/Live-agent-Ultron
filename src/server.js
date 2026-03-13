@@ -12,15 +12,11 @@ app.use(express.urlencoded({ extended: true }));
 const chatRoutes = require("./routes/chat.routes");
 app.use("/api", chatRoutes);
 
+const path = require("path");
+
 // 🔹 Root test interface
 app.get("/", (req, res) => {
-  res.send(`
-    <h2>Ultron Test Interface</h2>
-    <form method="POST" action="/api/chat">
-      <input name="message" placeholder="Type message" />
-      <button type="submit">Send</button>
-    </form>
-  `);
+  res.sendFile(path.join(__dirname, "../chat-ui.html"));
 });
 
 const PORT = 3000;
