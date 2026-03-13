@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Ultron Live Agent - Chat UI</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      :root {
+        --bg: #050816;
+        --bg-elevated: #0f172a;
+        --accent: #22c55e;
+        --accent-soft: rgba(34, 197, 94, 0.15);
+        --accent-strong: rgba(34, 197, 94, 0.4);
+        --border: rgba(148, 163, 184, 0.3);
+        --text: #e5e7eb;
+        --text-muted: #9ca3af;
+        --error: #f87171;
+        --shadow-soft: 0 18px 45px rgba(15, 23, 42, 0.8);
+        --radius-lg: 18px;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text",
+          "Segoe UI", sans-serif;
+        background: radial-gradient(circle at top left, #1f2933 0, #020617 40%),
+          radial-gradient(circle at bottom right, #0f766e 0, #020617 55%);
+        color: var(--text);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+      }
+
+      .shell {
+        width: 100%;
+        max-width: 960px;
+        background: radial-gradient(circle at top left, #111827 0, #020617 55%);
+        border-radius: 24px;
+        border: 1px solid rgba(148, 163, 184, 0.45);
+        box-shadow: var(--shadow-soft);
+        overflow: hidden;
+        backdrop-filter: blur(18px);
+      }
+
+      .shell-header {
+        padding: 16px 20px 10px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        border-bottom: 1px solid rgba(31, 41, 55, 0.9);
+        background: linear-gradient(
+          135deg,
+          rgba(15, 23, 42, 0.9),
+          rgba(15, 23, 42, 0.7)
+        );
+      }
+
+      .traffic-lights {
+        display: flex;
+        gap: 8px;
+      }
+
+      .dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 999px;
+      }
+
+      .dot.red {
+        background: #f97373;
+      }
+
+      .dot.amber {
+        background: #fbbf24;
+      }
+
+      .dot.green {
+        background: #22c55e;
+      }
+
+      .shell-title {
+        font-size: 13px;
+        color: var(--text-muted);
+        margin-left: 4px;
+      }
+
+      .badge {
+        margin-left: auto;
+        padding: 3px 9px;
+        border-radius: 999px;
+        border: 1px solid rgba(148, 163, 184, 0.4);
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        color: var(--text-muted);
+      }
+
+      .badge-dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 999px;
+        background: var(--accent);
+        box-shadow: 0 0 0 4px var(--accent-soft);
+      }
+
+      .main {
+        display: grid;
+        grid-template-columns: minmax(0, 3fr) minmax(0, 2.4fr);
+        gap: 0;
+      }
+
+      @media (max-width: 900px) {
+        .main {
+          grid-template-columns: minmax(0, 1fr);
+        }
+      }
+
+      .panel {
+        padding: 18px 20px 20px;
+      }
+
+      .panel + .panel {
+        border-left: 1px solid rgba(31, 41, 55, 0.9);
+      }
+
+      @media (max-width: 900px) {
+        .panel + .panel {
+          border-left: none;
+          border-top: 1px solid rgba(31, 41, 55, 0.9);
+        }
+      }
+
+      .panel-heading {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        margin-bottom: 10px;
+      }
+
+      .title {
+        font-size: 16px;
+        font-weight: 600;
+        letter-spacing: 0.03em;
+      }
+
+      .subtitle {
+        font-size: 12px;
+        color: var(--text-muted);
+      }
+
+      .hint {
+        font-size: 12px;
+        color: var(--text-muted);
+        margin-bottom: 12px;
+      }
+
+      .message-list {
+        background: radial-gradient(circle at top left, #020617 0, #020617 45%);
+        border-radius: var(--radius-lg);
+        border: 1px solid rgba(31, 41, 55, 0.9);
+        padding: 10px 12px 12px;
+        max-height: 340px;
+        overflow-y: auto;
+        font-size: 13px;
+      }
+
+      .msg-row {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 8px;
+      }
+
+      .msg-role {
+        width: 44px;
+        text-align: right;
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--text-muted);
+        flex-shrink: 0;
+      }
+
+      .msg-content {
+        flex: 1;
+        padding: 7px 9px;
+        border-radius: 11px;
+        line-height: 1.5;
+      }
+
+      .msg-content.user {
+        background: rgba(15, 23, 42, 0.95);
+        border: 1px solid rgba(55, 65, 81, 0.9);
+      }
+
+      .msg-content.bot {
+        background: rgba(15, 118, 110, 0.08);
+        border: 1px solid rgba(45, 212, 191, 0.3);
+      }
+
+      .msg-meta {
+        font-size: 11px;
+        color: var(--text-muted);
+        margin-top: 3px;
+      }
+
+      .empty-state {
+        font-size: 13px;
+        color: var(--text-muted);
+        padding: 10px 4px 6px;
+      }
+
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 8px;
+        border-radius: 999px;
+        border: 1px solid rgba(55, 65, 81, 0.9);
+        background: rgba(15, 23, 42, 0.95);
+        font-size: 11px;
+        margin-bottom: 8px;
+      }
+
+      .pill-key {
+        padding: 1px 5px;
+        border-radius: 4px;
+        border: 1px solid rgba(75, 85, 99, 0.8);
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+
+      .form {
+        margin-top: 8px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      .field-row {
+        display: flex;
+        gap: 8px;
+      }
+
+      .field-row .field {
+        flex: 1;
+      }
+
+      .field-label {
+        font-size: 12px;
+        color: var(--text-muted);
+        margin-bottom: 4px;
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+      }
+
+      textarea,
+      input[type="text"] {
+        width: 100%;
+        padding: 9px 10px;
+        border-radius: 11px;
+        border: 1px solid rgba(55, 65, 81, 0.9);
+        background: rgba(15, 23, 42, 0.95);
+        color: var(--text);
+        font-size: 13px;
+        resize: vertical;
+        min-height: 40px;
+        outline: none;
+        transition: border-color 0.15s ease, box-shadow 0.15s ease,
+          background 0.15s ease;
+      }
+
+      textarea::placeholder,
+      input::placeholder {
+        color: rgba(148, 163, 184, 0.7);
+      }
+
+      textarea:focus,
+      input[type="text"]:focus {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 1px var(--accent-soft);
+        background: rgba(15, 23, 42, 0.98);
+      }
+
+      .controls {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+        margin-top: 2px;
+      }
+
+      .inline-hint {
+        font-size: 11px;
+        color: var(--text-muted);
+      }
+
+      .error {
+        font-size: 12px;
+        color: var(--error);
+        margin-top: 4px;
+      }
+
+      button {
+        border: none;
+        outline: none;
+        cursor: pointer;
+        border-radius: 999px;
+        padding: 9px 18px;
+        font-size: 13px;
+        font-weight: 500;
+        letter-spacing: 0.03em;
+        text-transform: uppercase;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .btn-primary {
+        background: linear-gradient(
+          135deg,
+          var(--accent),
+          #16a34a,
+          #22c55e,
+          #3b82f6
+        );
+        color: #022c22;
+        box-shadow: 0 10px 25px var(--accent-strong);
+        border: 1px solid rgba(22, 163, 74, 0.9);
+      }
+
+      .btn-primary:disabled {
+        opacity: 0.6;
+        cursor: default;
+        box-shadow: none;
+      }
+
+      .btn-secondary {
+        background: rgba(15, 23, 42, 0.95);
+        color: var(--text-muted);
+        border: 1px solid rgba(55, 65, 81, 0.9);
+      }
+
+      .btn-icon {
+        font-size: 15px;
+      }
+
+      .status-dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 999px;
+        margin-right: 4px;
+      }
+
+      .status-dot.ok {
+        background: var(--accent);
+        box-shadow: 0 0 0 3px var(--accent-soft);
+      }
+
+      .status-dot.err {
+        background: var(--error);
+        box-shadow: 0 0 0 3px rgba(248, 113, 113, 0.35);
+      }
+
+      .status-label {
+        font-size: 11px;
+        color: var(--text-muted);
+        display: inline-flex;
+        align-items: center;
+      }
+
+      .endpoint {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+          "Liberation Mono", "Courier New", monospace;
+        font-size: 11px;
+        padding: 5px 8px;
+        border-radius: 8px;
+        background: rgba(15, 23, 42, 0.95);
+        border: 1px solid rgba(55, 65, 81, 0.9);
+        color: var(--text-muted);
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .endpoint-method {
+        padding: 1px 6px;
+        border-radius: 999px;
+        background: rgba(22, 163, 74, 0.18);
+        color: var(--accent);
+        border: 1px solid rgba(34, 197, 94, 0.5);
+      }
+
+      .endpoint-path {
+        color: #e5e7eb;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="shell">
+      <div class="shell-header">
+        <div class="traffic-lights">
+          <span class="dot red"></span>
+          <span class="dot amber"></span>
+          <span class="dot green"></span>
+        </div>
+        <div class="shell-title">Ultron · Local Agent Console</div>
+        <div class="badge">
+          <span class="badge-dot"></span>
+          <span>Connected to Node backend</span>
+        </div>
+      </div>
+
+      <div class="main">
+        <!-- Chat panel -->
+        <section class="panel">
+          <div class="panel-heading">
+            <div>
+              <div class="title">Chat playground</div>
+              <div class="subtitle">
+                Send a message to the Ultron backend and inspect the response.
+              </div>
+            </div>
+          </div>
+
+          <div class="message-list" id="messageList">
+            <div class="empty-state">
+              No messages yet. Send something like
+              <code>What is my intent?</code> to see how the
+              <code>processMessage</code> service responds.
+            </div>
+          </div>
+        </section>
+
+        <!-- Config & input panel -->
+        <section class="panel">
+          <div class="panel-heading">
+            <div>
+              <div class="title">Request builder</div>
+            </div>
+          </div>
+
+          <div class="hint">
+            This UI calls your existing
+            <span class="endpoint">
+              <span class="endpoint-method">POST</span>
+              <span class="endpoint-path">/api/chat</span>
+            </span>
+            endpoint defined in <code>server.js</code>. Make sure the Node
+            server is running on <code>http://localhost:3000</code>.
+          </div>
+
+          <form id="chatForm" class="form">
+            <div class="field">
+              <label class="field-label" for="messageInput">
+                <span>Message</span>
+                <span class="inline-hint">Body → { "message": "…" }</span>
+              </label>
+              <textarea
+                id="messageInput"
+                name="message"
+                rows="3"
+                required
+                placeholder="Type a user message to send to the intent service…"
+              ></textarea>
+              <div id="error" class="error" style="display: none"></div>
+            </div>
+
+            <div class="controls">
+              <div class="status-label" id="statusLabel">
+                <span class="status-dot ok" id="statusDot"></span>
+                <span id="statusText">Idle · ready to send</span>
+              </div>
+
+              <div>
+                <button type="button" class="btn-secondary" id="clearBtn">
+                  <span class="btn-icon">✕</span>
+                  Clear
+                </button>
+                <button type="submit" class="btn-primary" id="sendBtn">
+                  <span class="btn-icon">➤</span>
+                  Send to /api/chat
+                </button>
+              </div>
+            </div>
+          </form>
+        </section>
+      </div>
+    </div>
+
+    <script>
+      const form = document.getElementById("chatForm");
+      const messageInput = document.getElementById("messageInput");
+      const messageList = document.getElementById("messageList");
+      const errorEl = document.getElementById("error");
+      const statusDot = document.getElementById("statusDot");
+      const statusText = document.getElementById("statusText");
+      const clearBtn = document.getElementById("clearBtn");
+      const sendBtn = document.getElementById("sendBtn");
+
+      const API_URL = "http://localhost:3000/api/chat";
+
+      function setStatus({ state, message }) {
+        statusText.textContent = message;
+        if (state === "error") {
+          statusDot.classList.remove("ok");
+          statusDot.classList.add("err");
+        } else {
+          statusDot.classList.remove("err");
+          statusDot.classList.add("ok");
+        }
+      }
+
+      function appendMessage(role, content, meta) {
+        // Remove empty state if present
+        const empty = messageList.querySelector(".empty-state");
+        if (empty) {
+          empty.remove();
+        }
+
+        const row = document.createElement("div");
+        row.className = "msg-row";
+
+        const roleEl = document.createElement("div");
+        roleEl.className = "msg-role";
+        roleEl.textContent = role === "user" ? "USER" : "ULTRON";
+
+        const contentEl = document.createElement("div");
+        contentEl.className =
+          "msg-content " + (role === "user" ? "user" : "bot");
+
+        const text = document.createElement("div");
+        text.textContent = content;
+
+        contentEl.appendChild(text);
+
+        if (meta) {
+          const metaEl = document.createElement("div");
+          metaEl.className = "msg-meta";
+          metaEl.textContent = meta;
+          contentEl.appendChild(metaEl);
+        }
+
+        row.appendChild(roleEl);
+        row.appendChild(contentEl);
+
+        messageList.appendChild(row);
+        messageList.scrollTop = messageList.scrollHeight;
+      }
+
+      clearBtn.addEventListener("click", () => {
+        messageList.innerHTML =
+          '<div class="empty-state">Cleared history. Send a new message to start a fresh trace.</div>';
+        errorEl.style.display = "none";
+        messageInput.focus();
+      });
+
+      form.addEventListener("submit", async (event) => 
+      {
+        event.preventDefault();
+        const message = messageInput.value.trim();
+        if (!message) {
+          errorEl.textContent = "Please enter a message before sending.";
+          errorEl.style.display = "block";
+          return;
+        }
+
+        errorEl.style.display = "none";
+
+        appendMessage("user", message);
+
+        sendBtn.disabled = true;
+        setStatus({ state: "loading", message: "Sending request to /api/chat…" });
+
+        try {
+          const res = await fetch(API_URL, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ message }),
+          });
+
+          if (!res.ok) {
+            const text = await res.text();
+            throw new Error(
+              "Request failed with status " + res.status + ": " + text
+            );
+          }
+
+          const data = await res.json();
+          const resultObj = data.result;
+const result = `Intent: ${resultObj.intent}\n\n${resultObj.reply}`;
+
+          appendMessage(
+            "bot",
+            result,
+            'Raw JSON: ' + JSON.stringify(data, null, 0)
+          );
+
+          setStatus({
+            state: "ok",
+            message: "Response received from /api/chat",
+          });
+          messageInput.value = "";
+          messageInput.focus();
+        } catch (err) {
+          console.error(err);
+          errorEl.textContent =
+            "Error talking to backend: " +
+            (err && err.message ? err.message : String(err));
+          errorEl.style.display = "block";
+          setStatus({
+            state: "error",
+            message: "Failed to reach backend. Is server running on :3000?",
+          });
+        } finally {
+          sendBtn.disabled = false;
+        }
+      });
+    </script>
+  </body>
+</html>
+
