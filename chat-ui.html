@@ -414,10 +414,10 @@
           <span class="dot amber"></span>
           <span class="dot green"></span>
         </div>
-        <div class="shell-title">Ultron · Local Agent Console</div>
+        <div class="shell-title">Ultron Live Agent</div>
         <div class="badge">
           <span class="badge-dot"></span>
-          <span>Connected to Node backend</span>
+          <span>Online</span>
         </div>
       </div>
 
@@ -428,16 +428,14 @@
             <div>
               <div class="title">Chat playground</div>
               <div class="subtitle">
-                Send a message to the Ultron backend and inspect the response.
+                Send a message to Ultron Live Agent
               </div>
             </div>
           </div>
 
           <div class="message-list" id="messageList">
             <div class="empty-state">
-              No messages yet. Send something like
-              <code>What is my intent?</code> to see how the
-              <code>processMessage</code> service responds.
+              No messages yet. Ask anything!
             </div>
           </div>
         </section>
@@ -446,32 +444,20 @@
         <section class="panel">
           <div class="panel-heading">
             <div>
-              <div class="title">Request builder</div>
+              <div class="title">Type your message and click Send</div>
             </div>
           </div>
-
-          <div class="hint">
-            This UI calls your existing
-            <span class="endpoint">
-              <span class="endpoint-method">POST</span>
-              <span class="endpoint-path">/api/chat</span>
-            </span>
-            endpoint defined in <code>server.js</code>. Make sure the Node
-            server is running on <code>http://localhost:3000</code>.
-          </div>
-
           <form id="chatForm" class="form">
             <div class="field">
               <label class="field-label" for="messageInput">
                 <span>Message</span>
-                <span class="inline-hint">Body → { "message": "…" }</span>
               </label>
               <textarea
                 id="messageInput"
                 name="message"
                 rows="3"
                 required
-                placeholder="Type a user message to send to the intent service…"
+                placeholder="Type a message to ask Ultron Live Agent…"
               ></textarea>
               <div id="error" class="error" style="display: none"></div>
             </div>
@@ -479,7 +465,7 @@
             <div class="controls">
               <div class="status-label" id="statusLabel">
                 <span class="status-dot ok" id="statusDot"></span>
-                <span id="statusText">Idle · ready to send</span>
+                <span id="statusText">Idle. Ready to send</span>
               </div>
 
               <div>
@@ -489,7 +475,7 @@
                 </button>
                 <button type="submit" class="btn-primary" id="sendBtn">
                   <span class="btn-icon">➤</span>
-                  Send to /api/chat
+                  Send
                 </button>
               </div>
             </div>
@@ -580,7 +566,7 @@
         appendMessage("user", message);
 
         sendBtn.disabled = true;
-        setStatus({ state: "loading", message: "Sending request to /api/chat…" });
+        setStatus({ state: "loading", message: "Sending request…" });
 
         try {
           const res = await fetch(API_URL, {
@@ -600,17 +586,16 @@
 
           const data = await res.json();
           const resultObj = data.result;
-const result = `Intent: ${resultObj.intent}\n\n${resultObj.reply}`;
+const result = `${resultObj.intent}\n\n${resultObj.reply}`;
 
           appendMessage(
             "bot",
             result,
-            'Raw JSON: ' + JSON.stringify(data, null, 0)
           );
 
           setStatus({
             state: "ok",
-            message: "Response received from /api/chat",
+            message: "Response received",
           });
           messageInput.value = "";
           messageInput.focus();
