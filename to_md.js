@@ -1,21 +1,9 @@
 const fs = require("fs");
 const path = require("path");
-const readline = require("readline");
-
-// Create readline interface for interactive prompt
-const rl = readline.createInterface({
-  input: process.stdin,
-  output: process.stdout,
-});
 
 // Ask user for a prompt and save it as .md
-rl.question("Type your prompt: ", (promptText) => {
+  function savePromptAsMarkdown(promptText, response) {
   const trimmed = promptText.trim();
-  if (!trimmed) {
-    console.log("No prompt provided. Exiting.");
-    rl.close();
-    return;
-  }
 
   // Timestamp-based filename
   const now = new Date();
@@ -25,20 +13,23 @@ rl.question("Type your prompt: ", (promptText) => {
     .replace("T", "_")
     .slice(0, 19); // keep up to seconds
 
-  const fileName = `prompt_${timestamp}.md`;
+  const fileName = `prompt.md`;
 
   // Save in the same directory as this script
-  const filePath = path.join(__dirname, fileName);
+  const folderPath = './prompts';
+
+  fs.mkdirSync(folderPath, { recursive: true });
+
+  const filePath = path.join(folderPath , fileName);
 
   // Simple markdown content
-  const content = `# Prompt\n\n${trimmed}\n`;
+  const content = `${timestamp}\n# Prompt\n${trimmed}\n# Response\n${response}\n\n\n`;
 
-  fs.writeFile(filePath, content, "utf8", (err) => {
+  fs.appendFile(filePath, content, "utf8", (err) => {
     if (err) {
       console.error("Error writing file:", err);
-    } else {
-      console.log(`Markdown file created: ${filePath}`);
     }
-    rl.close();
   });
-});
+};
+
+module.exports = savePromptAsMarkdown;
