@@ -52,11 +52,4 @@ function savePromptAsMarkdown(promptText, response) {
   console.log(`Prompt and response saved to ${filePath}`);
 }
 
-// Allow this file to be run directly for quick testing.
-if (require.main === module) {
-  const prompt = process.argv[2] || "Example prompt";
-  const response = process.argv[3] || "Example response";
-  savePromptAsMarkdown(prompt, response);
-}
-
 module.exports = savePromptAsMarkdown;
