@@ -194,6 +194,7 @@
         padding: 7px 9px;
         border-radius: 11px;
         line-height: 1.5;
+        white-space: pre-wrap;
       }
 
       .msg-content.user {
@@ -630,7 +631,7 @@
 
           const data = await res.json();
           const resultObj = data.result;
-const result = `${resultObj.reply}`;
+          const result = `intent: ${resultObj.intent}\nreply: ${resultObj.reply}`;
 
           appendMessage(
             "bot",
