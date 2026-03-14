@@ -50,6 +50,6 @@ function savePromptAsMarkdown(promptText, response) {
 
   fs.writeFileSync(filePath, content, "utf8");
   console.log(`Prompt and response saved to ${filePath}`);
-}
+};
 
 module.exports = savePromptAsMarkdown;

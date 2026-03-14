@@ -19,12 +19,19 @@ const processMessage = async (message) => {
     if (rawText.startsWith('\`\`\`json')) {
       rawText = rawText.replace(/\`\`\`json/g, '').replace(/\`\`\`/g, '').trim();
     }
-    return JSON.parse(rawText);
+    const result = JSON.parse(rawText);
+    
+    // Save prompt and response to markdown file
+    const savePromptAsMarkdown = require('../../to_md.js');
+    savePromptAsMarkdown(message, result);
+    
+    return result;
   }
 
   catch (error) {
     console.error("Gemini API Error", error);
-    return { intent: "ERROR", reply: "Sorry I had trouble processing that ", };
-  };
+    require('fs').writeFileSync('gemini-error.txt', error.stack || error.toString());
+    return { intent: "ERROR", reply: "Sorry I had trouble processing that" };
+  }
 };
 module.exports = { processMessage };
