@@ -16,7 +16,7 @@ function savePromptAsMarkdown(promptText, response) {
   const fileName = `prompt_${timestamp}.md`;
 
   // Save in a folder next to this script
-  const folderPath = path.join(__dirname, "prompts");
+  const folderPath = './prompts';
 
   fs.mkdirSync(folderPath, { recursive: true });
 
