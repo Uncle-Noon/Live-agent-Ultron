@@ -507,7 +507,29 @@
         }
       }
 
-      function appendMessage(role, content, meta) {
+      const STORAGE_KEY = "ultronChatHistory";
+      const MAX_HISTORY_ITEMS = 200;
+
+      function getStoredHistory() {
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          const items = raw ? JSON.parse(raw) : [];
+          return Array.isArray(items) ? items : [];
+        } catch (err) {
+          console.warn("Failed to parse stored history", err);
+          return [];
+        }
+      }
+
+      function saveHistory(items) {
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+        } catch (err) {
+          console.warn("Failed to save history", err);
+        }
+      }
+
+      function appendMessage(role, content, meta, { save = true } = {}) {
         // Remove empty state if present
         const empty = messageList.querySelector(".empty-state");
         if (empty) {
@@ -542,14 +564,36 @@
 
         messageList.appendChild(row);
         messageList.scrollTop = messageList.scrollHeight;
+
+        if (save) {
+          const history = getStoredHistory();
+          history.push({ role, content, meta, timestamp: Date.now() });
+          if (history.length > MAX_HISTORY_ITEMS) {
+            history.splice(0, history.length - MAX_HISTORY_ITEMS);
+          }
+          saveHistory(history);
+        }
+      }
+
+      function restoreHistory() {
+        const history = getStoredHistory();
+        if (!history.length) return;
+
+        history.forEach((item) => {
+          appendMessage(item.role, item.content, item.meta, { save: false });
+        });
       }
 
       clearBtn.addEventListener("click", () => {
+        localStorage.removeItem(STORAGE_KEY);
         messageList.innerHTML =
           '<div class="empty-state">Cleared history. Send a new message to start a fresh trace.</div>';
         errorEl.style.display = "none";
         messageInput.focus();
       });
+
+      // Restore messages on page load (keeps history across reloads)
+      restoreHistory();
 
       form.addEventListener("submit", async (event) => 
       {
