@@ -1,9 +1,29 @@
 const { GoogleGenAI } = require("@google/genai");
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+const fs = require("fs");
+const path = require("path");
+
+function getConversationPath(email) {
+  if (!email) return null;
+  const safeEmail = email.toLowerCase().replace(/[^a-z0-9@._-]/g, "_");
+  const projectRoot = path.join(__dirname, "..", "..");
+  return path.join(projectRoot, "users", safeEmail, "prompts", "conversation.md");
+}
+
 const processMessage = async (message, email, file) => {
   try {
+    let conversationHistory = "";
+    if (email) {
+      const convPath = getConversationPath(email);
+      if (fs.existsSync(convPath)) {
+        conversationHistory = fs.readFileSync(convPath, "utf8");
+      }
+    }
+
     const prompt = `
 You are an intent detection(personal ai assistant who can perform tasks for the user) bot. Evaluate the user's message like a personal ai assistant.
+
+${conversationHistory ? `Previous conversation history:\n${conversationHistory}\n\n` : ""}
 
 The system supports a few "quick commands" that open a website in the browser when the user asks for it.
 The known quick commands are:
@@ -56,10 +76,27 @@ User message: "${message}"
       },
     ] : prompt;
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: contents,
-    })
+    let response;
+    let retries = 3;
+    for (let i = 0; i < retries; i++) {
+      try {
+        response = await ai.models.generateContent({
+          model: 'gemini-2.5-pro',
+          contents: contents,
+        });
+        break; // Success, exit loop
+      } catch (error) {
+        if (error.status === 429 && i < retries - 1) {
+          const retryDelay = error.details?.find(d => d['@type'] === 'type.googleapis.com/google.rpc.RetryInfo')?.retryDelay || '60s';
+          const delayMs = parseFloat(retryDelay.replace('s', '')) * 1000 || 60000;
+          console.log(`Quota exceeded, retrying in ${delayMs / 1000}s...`);
+          await new Promise(resolve => setTimeout(resolve, delayMs));
+        } else {
+          throw error;
+        }
+      }
+    }
+
     let rawText = response.text;
     if (rawText.startsWith('\`\`\`json')) {
       rawText = rawText.replace(/\`\`\`json/g, '').replace(/\`\`\`/g, '').trim();
