@@ -90,8 +90,14 @@
         margin-left: 4px;
       }
 
-      .badge {
+      .shell-actions {
         margin-left: auto;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .badge {
         padding: 3px 9px;
         border-radius: 999px;
         border: 1px solid rgba(148, 163, 184, 0.4);
@@ -436,9 +442,19 @@
           <span class="dot green"></span>
         </div>
         <div class="shell-title">Ultron Live Agent</div>
-        <div class="badge">
-          <span class="badge-dot"></span>
-          <span>Online</span>
+        <div class="shell-actions">
+          <button
+            type="button"
+            class="btn-secondary"
+            id="switchAccountBtn"
+            style="padding: 5px 10px; font-size: 11px; text-transform: none; letter-spacing: 0;"
+          >
+            Switch account
+          </button>
+          <div class="badge">
+            <span class="badge-dot"></span>
+            <span>Online</span>
+          </div>
         </div>
       </div>
 
@@ -543,505 +559,443 @@
       </div>
     </div>
 
-    <script>
-      const form = document.getElementById("chatForm");
-      const messageInput = document.getElementById("messageInput");
-      const messageList = document.getElementById("messageList");
-      const errorEl = document.getElementById("error");
-      const statusDot = document.getElementById("statusDot");
-      const statusText = document.getElementById("statusText");
-      const clearBtn = document.getElementById("clearBtn");
-      const sendBtn = document.getElementById("sendBtn");
-      const micBtn = document.getElementById("micBtn");
-      const micText = document.getElementById("micText");
+    <script type="module">
+  import {
+    initCommandTools,
+    tryHandleCommand,
+  } from "./src/services/tool.service.js";
 
-      const API_URL = "http://localhost:3000/api/chat";
+  const form = document.getElementById("chatForm");
+  const messageInput = document.getElementById("messageInput");
+  const messageList = document.getElementById("messageList");
+  const errorEl = document.getElementById("error");
+  const statusDot = document.getElementById("statusDot");
+  const statusText = document.getElementById("statusText");
+  const clearBtn = document.getElementById("clearBtn");
+  const sendBtn = document.getElementById("sendBtn");
+  const switchAccountBtn = document.getElementById("switchAccountBtn");
+  const micBtn = document.getElementById("micBtn");
+  const micText = document.getElementById("micText");
 
-      function setStatus({ state, message }) {
-        statusText.textContent = message;
-        if (state === "error") {
-          statusDot.classList.remove("ok");
-          statusDot.classList.add("err");
-        } else {
-          statusDot.classList.remove("err");
-          statusDot.classList.add("ok");
+  const API_URL = "http://localhost:3000/api/chat";
+  const API_HISTORY_URL = "http://localhost:3000/api/history";
+  const EMAIL_STORAGE_KEY = "ultronEmail";
+  const DEBUG_ENDPOINT =
+    "http://127.0.0.1:7871/ingest/33f09435-a8d0-4286-b25c-dc72c67b9064";
+
+  function setStatus({ state, message }) {
+    statusText.textContent = message;
+    if (state === "error") {
+      statusDot.classList.remove("ok");
+      statusDot.classList.add("err");
+    } else {
+      statusDot.classList.remove("err");
+      statusDot.classList.add("ok");
+    }
+  }
+
+  function sendDebugLog(payload) {
+    // #region agent log
+    fetch(DEBUG_ENDPOINT, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Debug-Session-Id": "4ed34f",
+      },
+      body: JSON.stringify({
+        sessionId: "4ed34f",
+        runId: payload.runId || "pre-fix",
+        hypothesisId: payload.hypothesisId || "H1",
+        location: payload.location,
+        message: payload.message,
+        data: payload.data || {},
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {});
+    // #endregion agent log
+  }
+
+  const urlParams = new URLSearchParams(window.location.search);
+  let currentEmail =
+    window.localStorage.getItem(EMAIL_STORAGE_KEY) ||
+    urlParams.get("email") ||
+    "";
+
+  if (!currentEmail) {
+    sendDebugLog({
+      runId: "pre-fix",
+      hypothesisId: "H4",
+      location: "chat-ui.html:init:noEmail",
+      message: "No email found, redirecting to login",
+      data: {},
+    });
+    // No email associated yet – redirect to login to capture it
+    window.location.href = "/login";
+  } else {
+    try {
+      window.localStorage.setItem(EMAIL_STORAGE_KEY, currentEmail);
+    } catch (err) {
+      console.warn("Failed to persist email in localStorage", err);
+    }
+  }
+
+  const STORAGE_KEY = currentEmail
+    ? `ultronChatHistory_${currentEmail}`
+    : "ultronChatHistory";
+  const MAX_HISTORY_ITEMS = 200;
+
+  if (switchAccountBtn) {
+    switchAccountBtn.addEventListener("click", () => {
+      try {
+        window.localStorage.removeItem(EMAIL_STORAGE_KEY);
+      } catch (err) {
+        console.warn("Failed to clear stored email", err);
+      }
+      window.location.href = "/login";
+    });
+  }
+
+  function getStoredHistory() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      const items = raw ? JSON.parse(raw) : [];
+      return Array.isArray(items) ? items : [];
+    } catch (err) {
+      console.warn("Failed to parse stored history", err);
+      return [];
+    }
+  }
+
+  // ==========================================
+  // Speech Recognition & Synthesis Setup
+  // ==========================================
+  let recognition;
+  let isRecording = false;
+
+  const SpeechRecognition =
+    window.SpeechRecognition || window.webkitSpeechRecognition;
+
+  if (SpeechRecognition) {
+    recognition = new SpeechRecognition();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = "en-US";
+
+    recognition.onstart = () => {
+      isRecording = true;
+      if (micBtn) micBtn.classList.add("recording");
+      if (micText) micText.textContent = "Listening...";
+      setStatus({ state: "ok", message: "Listening to microphone..." });
+    };
+
+    recognition.onresult = (event) => {
+      let finalTranscript = "";
+
+      for (let i = event.resultIndex; i < event.results.length; ++i) {
+        if (event.results[i].isFinal) {
+          finalTranscript += event.results[i][0].transcript;
         }
       }
 
-      // ==========================================
-      // Speech Recognition & Synthesis Setup
-      // ==========================================
-      let recognition;
-      let isRecording = false;
-
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-
-      if (SpeechRecognition) {
-        recognition = new SpeechRecognition();
-        recognition.continuous = true;
-        recognition.interimResults = true;
-        recognition.lang = "en-US";
-
-        recognition.onstart = () => {
-          isRecording = true;
-          if (micBtn) micBtn.classList.add("recording");
-          if (micText) micText.textContent = "Listening...";
-          setStatus({ state: "ok", message: "Listening to microphone..." });
-        };
-
-        recognition.onresult = (event) => {
-          let interimTranscript = "";
-          let finalTranscript = "";
-
-          for (let i = event.resultIndex; i < event.results.length; ++i) {
-            if (event.results[i].isFinal) {
-              finalTranscript += event.results[i][0].transcript;
-            } else {
-              interimTranscript += event.results[i][0].transcript;
-            }
-          }
-
-          if (finalTranscript) {
-            const currentVal = messageInput.value.trim();
-            messageInput.value = currentVal ? `${currentVal} ${finalTranscript}` : finalTranscript;
-          }
-        };
-
-        recognition.onerror = (event) => {
-          console.error("Speech Recognition Error:", event.error);
-          stopRecording();
-          setStatus({ state: "error", message: `Mic Error: ${event.error}` });
-        };
-
-        recognition.onend = () => {
-          stopRecording();
-        };
-      } else {
-        console.warn("Speech recognition not supported in this browser.");
-        if (micBtn) {
-          micBtn.style.display = "none";
-        }
+      if (finalTranscript) {
+        const currentVal = messageInput.value.trim();
+        messageInput.value = currentVal
+          ? `${currentVal} ${finalTranscript}`
+          : finalTranscript;
       }
+    };
 
-      function startRecording() {
-        if (!recognition) return;
-        try {
-          if (window.speechSynthesis) {
-             window.speechSynthesis.cancel();
-          }
-          recognition.start();
-        } catch (err) {
-          console.error("Failed to start recognition:", err);
-        }
-      }
+    recognition.onerror = (event) => {
+      console.error("Speech Recognition Error:", event.error);
+      stopRecording();
+      setStatus({ state: "error", message: `Mic Error: ${event.error}` });
+    };
 
-      function stopRecording() {
-        if (!recognition) return;
-        isRecording = false;
-        if (micBtn) micBtn.classList.remove("recording");
-        if (micText) micText.textContent = "Speak";
-        recognition.stop();
-        setStatus({ state: "ok", message: "Idle. Ready to send" });
-      }
+    recognition.onend = () => {
+      stopRecording();
+    };
+  } else {
+    console.warn("Speech recognition not supported in this browser.");
+    if (micBtn) {
+      micBtn.style.display = "none";
+    }
+  }
 
-      if (micBtn) {
-        micBtn.addEventListener("click", () => {
-          if (isRecording) {
-            stopRecording();
-          } else {
-            startRecording();
-          }
-        });
-      }
-
-      function speakResponse(text) {
-        if (!window.speechSynthesis) return;
-
-        window.speechSynthesis.cancel();
-
-        const utterance = new SpeechSynthesisUtterance(text);
-        
-        const voices = window.speechSynthesis.getVoices();
-        const englishVoice = voices.find(v => v.lang.startsWith("en-"));
-        if (englishVoice) {
-             utterance.voice = englishVoice;
-        }
-
-        window.speechSynthesis.speak(utterance);
-      }
-
+  function startRecording() {
+    if (!recognition) return;
+    try {
       if (window.speechSynthesis) {
-          if (window.speechSynthesis.onvoiceschanged !== undefined) {
-              window.speechSynthesis.onvoiceschanged = () => {
-                  // Voices loaded
-              };
-          }
+        window.speechSynthesis.cancel();
       }
+      recognition.start();
+    } catch (err) {
+      console.error("Failed to start recognition:", err);
+    }
+  }
 
-      const COMMANDS_STORAGE_KEY = "ultronCommands";
-      const DEFAULT_COMMANDS = [
-        {
-          keyword: "open youtube",
-          url: "https://www.youtube.com",
-          label: "YouTube",
-          aliases: ["youtube", "yt"],
-        },
-        {
-          keyword: "open instagram",
-          url: "https://www.instagram.com",
-          label: "Instagram",
-          aliases: ["instagram", "insta", "ig"],
-        },
-      ];
+  function stopRecording() {
+    if (!recognition) return;
+    isRecording = false;
+    if (micBtn) micBtn.classList.remove("recording");
+    if (micText) micText.textContent = "Speak";
+    recognition.stop();
+    setStatus({ state: "ok", message: "Idle. Ready to send" });
+  }
 
-      const commandListEl = document.getElementById("commandList");
-      const commandForm = document.getElementById("commandForm");
-      const commandKeywordInput = document.getElementById("commandKeyword");
-      const commandUrlInput = document.getElementById("commandUrl");
-      const commandErrorEl = document.getElementById("commandError");
-
-      let customCommands = [];
-
-      function loadCommands() {
-        try {
-          const raw = localStorage.getItem(COMMANDS_STORAGE_KEY);
-          const items = raw ? JSON.parse(raw) : [];
-          if (!Array.isArray(items)) return;
-          customCommands = items
-            .filter((cmd) => cmd && cmd.keyword && cmd.url)
-            .map((cmd) => ({
-              keyword: cmd.keyword,
-              url: cmd.url,
-              label: cmd.label || cmd.keyword,
-              aliases: cmd.aliases || [],
-            }));
-        } catch (err) {
-          console.warn("Failed to load commands", err);
-          customCommands = [];
-        }
+  if (micBtn) {
+    micBtn.addEventListener("click", () => {
+      if (isRecording) {
+        stopRecording();
+      } else {
+        startRecording();
       }
+    });
+  }
 
-      function saveCommands() {
-        try {
-          localStorage.setItem(COMMANDS_STORAGE_KEY, JSON.stringify(customCommands));
-        } catch (err) {
-          console.warn("Failed to save commands", err);
-        }
+  function speakResponse(text) {
+    if (!window.speechSynthesis) return;
+
+    window.speechSynthesis.cancel();
+
+    const utterance = new SpeechSynthesisUtterance(text);
+
+    const voices = window.speechSynthesis.getVoices();
+    const englishVoice = voices.find((v) => v.lang.startsWith("en-"));
+    if (englishVoice) {
+      utterance.voice = englishVoice;
+    }
+
+    window.speechSynthesis.speak(utterance);
+  }
+
+  if (window.speechSynthesis) {
+    if (window.speechSynthesis.onvoiceschanged !== undefined) {
+      window.speechSynthesis.onvoiceschanged = () => {
+        // voices loaded
+      };
+    }
+  }
+
+  function saveHistory(items) {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+    } catch (err) {
+      console.warn("Failed to save history", err);
+    }
+  }
+
+  function appendMessage(role, content, meta, { save = true } = {}) {
+    const empty = messageList.querySelector(".empty-state");
+    if (empty) empty.remove();
+
+    const row = document.createElement("div");
+    row.className = "msg-row";
+
+    const roleEl = document.createElement("div");
+    roleEl.className = "msg-role";
+    roleEl.textContent = role === "user" ? "USER" : "ULTRON";
+
+    const contentEl = document.createElement("div");
+    contentEl.className = "msg-content " + (role === "user" ? "user" : "bot");
+
+    const text = document.createElement("div");
+    text.textContent = content;
+    contentEl.appendChild(text);
+
+    if (meta) {
+      const metaEl = document.createElement("div");
+      metaEl.className = "msg-meta";
+      metaEl.textContent = meta;
+      contentEl.appendChild(metaEl);
+    }
+
+    row.appendChild(roleEl);
+    row.appendChild(contentEl);
+
+    messageList.appendChild(row);
+    messageList.scrollTop = messageList.scrollHeight;
+
+    if (save) {
+      const history = getStoredHistory();
+      history.push({ role, content, meta, timestamp: Date.now() });
+      if (history.length > MAX_HISTORY_ITEMS) {
+        history.splice(0, history.length - MAX_HISTORY_ITEMS);
       }
+      saveHistory(history);
+    }
+  }
 
-      function getAllCommands() {
-        return [...DEFAULT_COMMANDS, ...customCommands];
-      }
+  function restoreHistory() {
+    const history = getStoredHistory();
+    if (!history.length) return;
+    history.forEach((item) => {
+      appendMessage(item.role, item.content, item.meta, { save: false });
+    });
+  }
 
-      function renderCommands() {
-        if (!commandListEl) return;
+  async function loadServerHistory() {
+    if (!currentEmail) return;
+    try {
+      const res = await fetch(
+        `${API_HISTORY_URL}?email=${encodeURIComponent(currentEmail)}`
+      );
+      if (!res.ok) return;
+      const data = await res.json();
+      const history = Array.isArray(data.history) ? data.history : [];
+      if (!history.length) return;
 
-        const commands = getAllCommands();
-        if (!commands.length) {
-          commandListEl.innerHTML =
-            '<div class="empty-state">No commands configured yet.</div>';
-          return;
-        }
+      history.forEach((item) => {
+        if (!item || !item.role || !item.content) return;
+        appendMessage(item.role, item.content, null, { save: false });
+      });
+    } catch (err) {
+      console.warn("Failed to load server history", err);
+    }
+  }
 
-        commandListEl.innerHTML = "";
-        commands.forEach((cmd) => {
-          const row = document.createElement("div");
-          row.className = "msg-row";
-          row.style.alignItems = "center";
-          row.style.justifyContent = "space-between";
-          row.style.padding = "8px 10px";
-          row.style.borderBottom = "1px solid rgba(148, 163, 184, 0.1)";
+  // NEW: initialize the "add functions / commands" utility from external file
+  initCommandTools({
+    listEl: document.getElementById("commandList"),
+    formEl: document.getElementById("commandForm"),
+    keywordInput: document.getElementById("commandKeyword"),
+    urlInput: document.getElementById("commandUrl"),
+    errorEl: document.getElementById("commandError"),
+  });
 
-          const label = document.createElement("div");
-          label.innerHTML =
-            `<span style="font-weight:600">${cmd.keyword}</span><br/><span style="font-size:11px;color:rgba(148,163,184,0.9)">${cmd.url}</span>`;
-          row.appendChild(label);
+  clearBtn.addEventListener("click", () => {
+    localStorage.removeItem(STORAGE_KEY);
+    messageList.innerHTML =
+      '<div class="empty-state">Cleared history. Send a new message to start a fresh trace.</div>';
+    errorEl.style.display = "none";
+    messageInput.focus();
+  });
 
-          const isCustom = !DEFAULT_COMMANDS.some(
-            (d) => d.keyword.toLowerCase() === cmd.keyword.toLowerCase()
-          );
-          if (isCustom) {
-            const btn = document.createElement("button");
-            btn.type = "button";
-            btn.className = "btn-secondary";
-            btn.style.padding = "4px 8px";
-            btn.style.fontSize = "11px";
-            btn.textContent = "Delete";
-            btn.addEventListener("click", () => {
-              customCommands = customCommands.filter(
-                (c) => c.keyword.toLowerCase() !== cmd.keyword.toLowerCase()
-              );
-              saveCommands();
-              renderCommands();
-            });
-            row.appendChild(btn);
-          }
+  (async function initHistory() {
+    sendDebugLog({
+      runId: "pre-fix",
+      hypothesisId: "H4",
+      location: "chat-ui.html:initHistory:start",
+      message: "Initializing history load",
+      data: { hasEmail: !!currentEmail },
+    });
+    await loadServerHistory();
+    restoreHistory();
+  })();
 
-          commandListEl.appendChild(row);
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const message = messageInput.value.trim();
+    sendDebugLog({
+      runId: "pre-fix",
+      hypothesisId: "H1",
+      location: "chat-ui.html:formSubmit:start",
+      message: "Form submit handler called",
+      data: { hasMessage: !!message, currentEmail },
+    });
+    if (!message) {
+      errorEl.textContent = "Please enter a message before sending.";
+      errorEl.style.display = "block";
+      return;
+    }
+
+    errorEl.style.display = "none";
+    appendMessage("user", message);
+
+    const commandHandled = tryHandleCommand(message);
+    if (commandHandled) {
+      setStatus({ state: "ok", message: "Command executed" });
+    }
+
+    sendBtn.disabled = true;
+    setStatus({ state: "loading", message: "Sending request…" });
+
+    try {
+      sendDebugLog({
+        runId: "pre-fix",
+        hypothesisId: "H1",
+        location: "chat-ui.html:formSubmit:beforeFetch",
+        message: "About to call backend",
+        data: { apiUrl: API_URL },
+      });
+
+      const res = await fetch(API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message, email: currentEmail || null }),
+      });
+
+      sendDebugLog({
+        runId: "pre-fix",
+        hypothesisId: "H2",
+        location: "chat-ui.html:formSubmit:afterFetch",
+        message: "Fetch completed",
+        data: { ok: res.ok, status: res.status },
+      });
+
+      if (!res.ok) {
+        const text = await res.text();
+        sendDebugLog({
+          runId: "pre-fix",
+          hypothesisId: "H2",
+          location: "chat-ui.html:formSubmit:nonOk",
+          message: "Backend returned non-ok status",
+          data: { status: res.status, body: text },
         });
-      }
-
-      function escapeRegExp(value) {
-        return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      }
-
-      function findCommand(message) {
-        const normalized = message.trim().toLowerCase();
-        const commands = getAllCommands();
-
-        const buildTokens = (cmd) => {
-          const base = (cmd.keyword || "").trim().toLowerCase();
-          const aliases = Array.isArray(cmd.aliases) ? cmd.aliases : [];
-          return [base, ...aliases.map((a) => (a || "").trim().toLowerCase())].filter(Boolean);
-        };
-
-        const isWordMatch = (text, token) => {
-          const regexp = new RegExp(`\\b${escapeRegExp(token)}\\b`, "i");
-          return regexp.test(text);
-        };
-
-        // Try exact match against the keyword or any alias.
-        const exact = commands.find((c) => {
-          const tokens = buildTokens(c);
-          return tokens.some((token) => token === normalized);
-        });
-        if (exact) return exact;
-
-        // Otherwise, try to match if message contains a known keyword or alias as a word.
-        return commands.find((c) => {
-          const tokens = buildTokens(c);
-          return tokens.some((token) => isWordMatch(normalized, token));
-        });
-      }
-
-      function tryHandleCommand(message) {
-        const cmd = findCommand(message);
-        if (!cmd) return false;
-
-        window.open(cmd.url, "_blank");
-        appendMessage(
-          "bot",
-          `Opening ${cmd.label || cmd.url}.`
+        throw new Error(
+          "Request failed with status " + res.status + ": " + text
         );
-        return true;
       }
 
-      const STORAGE_KEY = "ultronChatHistory";
-      const MAX_HISTORY_ITEMS = 200;
+      const data = await res.json();
+      const resultObj = data.result;
+      const result = `intent: ${resultObj.intent}\nreply: ${resultObj.reply}`;
 
-      function getStoredHistory() {
-        try {
-          const raw = localStorage.getItem(STORAGE_KEY);
-          const items = raw ? JSON.parse(raw) : [];
-          return Array.isArray(items) ? items : [];
-        } catch (err) {
-          console.warn("Failed to parse stored history", err);
-          return [];
-        }
-      }
+      if (resultObj.command && typeof resultObj.command === "string") {
+        const normalizedCommand = resultObj.command.trim().toLowerCase();
+        const normalizedMessage = message.trim().toLowerCase();
 
-      function saveHistory(items) {
-        try {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
-        } catch (err) {
-          console.warn("Failed to save history", err);
-        }
-      }
-
-      function appendMessage(role, content, meta, { save = true } = {}) {
-        // Remove empty state if present
-        const empty = messageList.querySelector(".empty-state");
-        if (empty) {
-          empty.remove();
-        }
-
-        const row = document.createElement("div");
-        row.className = "msg-row";
-
-        const roleEl = document.createElement("div");
-        roleEl.className = "msg-role";
-        roleEl.textContent = role === "user" ? "USER" : "ULTRON";
-
-        const contentEl = document.createElement("div");
-        contentEl.className =
-          "msg-content " + (role === "user" ? "user" : "bot");
-
-        const text = document.createElement("div");
-        text.textContent = content;
-
-        contentEl.appendChild(text);
-
-        if (meta) {
-          const metaEl = document.createElement("div");
-          metaEl.className = "msg-meta";
-          metaEl.textContent = meta;
-          contentEl.appendChild(metaEl);
-        }
-
-        row.appendChild(roleEl);
-        row.appendChild(contentEl);
-
-        messageList.appendChild(row);
-        messageList.scrollTop = messageList.scrollHeight;
-
-        if (save) {
-          const history = getStoredHistory();
-          history.push({ role, content, meta, timestamp: Date.now() });
-          if (history.length > MAX_HISTORY_ITEMS) {
-            history.splice(0, history.length - MAX_HISTORY_ITEMS);
+        if (!commandHandled || normalizedCommand !== normalizedMessage) {
+          const handledByAi = tryHandleCommand(resultObj.command);
+          if (handledByAi) {
+            setStatus({ state: "ok", message: "Command executed" });
           }
-          saveHistory(history);
         }
       }
 
-      function restoreHistory() {
-        const history = getStoredHistory();
-        if (!history.length) return;
-
-        history.forEach((item) => {
-          appendMessage(item.role, item.content, item.meta, { save: false });
-        });
-      }
-
-      // Load any saved command definitions and render them
-      loadCommands();
-      renderCommands();
-
-      if (commandForm) {
-        commandForm.addEventListener("submit", (event) => {
-          event.preventDefault();
-          commandErrorEl.style.display = "none";
-
-          const keyword = (commandKeywordInput.value || "").trim();
-          const url = (commandUrlInput.value || "").trim();
-
-          if (!keyword || !url) {
-            commandErrorEl.textContent = "Both keyword and URL are required.";
-            commandErrorEl.style.display = "block";
-            return;
-          }
-
-          try {
-            new URL(url);
-          } catch (err) {
-            commandErrorEl.textContent = "Please enter a valid URL (e.g. https://example.com).";
-            commandErrorEl.style.display = "block";
-            return;
-          }
-
-          const exists = getAllCommands().some(
-            (c) => c.keyword.trim().toLowerCase() === keyword.toLowerCase()
-          );
-          if (exists) {
-            commandErrorEl.textContent = "A command with that keyword already exists.";
-            commandErrorEl.style.display = "block";
-            return;
-          }
-
-          customCommands.push({ keyword, url, label: keyword });
-          saveCommands();
-          renderCommands();
-
-          commandKeywordInput.value = "";
-          commandUrlInput.value = "";
-          commandKeywordInput.focus();
-        });
-      }
-
-      clearBtn.addEventListener("click", () => {
-        localStorage.removeItem(STORAGE_KEY);
-        messageList.innerHTML =
-          '<div class="empty-state">Cleared history. Send a new message to start a fresh trace.</div>';
-        errorEl.style.display = "none";
-        messageInput.focus();
+      sendDebugLog({
+        runId: "pre-fix",
+        hypothesisId: "H2",
+        location: "chat-ui.html:formSubmit:beforeAppendBot",
+        message: "About to append bot message",
+        data: { intent: resultObj.intent },
       });
 
-      // Restore messages on page load (keeps history across reloads)
-      restoreHistory();
-
-      form.addEventListener("submit", async (event) => 
-      {
-        event.preventDefault();
-        const message = messageInput.value.trim();
-        if (!message) {
-          errorEl.textContent = "Please enter a message before sending.";
-          errorEl.style.display = "block";
-          return;
-        }
-
-        errorEl.style.display = "none";
-
-        appendMessage("user", message);
-
-        const commandHandled = tryHandleCommand(message);
-        if (commandHandled) {
-          setStatus({ state: "ok", message: "Command executed" });
-        }
-
-        sendBtn.disabled = true;
-        setStatus({ state: "loading", message: "Sending request…" });
-
-        try {
-          const res = await fetch(API_URL, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ message }),
-          });
-
-          if (!res.ok) {
-            const text = await res.text();
-            throw new Error(
-              "Request failed with status " + res.status + ": " + text
-            );
-          }
-
-          const data = await res.json();
-          const resultObj = data.result;
-          const result = `${resultObj.reply}`;
-
-          // If the backend normalized a command (e.g. "open yt" -> "open youtube"), execute it.
-          if (resultObj.command && typeof resultObj.command === "string") {
-            const normalizedCommand = resultObj.command.trim().toLowerCase();
-            const normalizedMessage = message.trim().toLowerCase();
-
-            // Avoid opening twice if the message already directly matched the command
-            if (!commandHandled || normalizedCommand !== normalizedMessage) {
-              const handledByAi = tryHandleCommand(resultObj.command);
-              if (handledByAi) {
-                setStatus({ state: "ok", message: "Command executed" });
-              }
-            }
-          }
-
-          appendMessage(
-            "bot",
-            result,
-          );
-
-          speakResponse(result);
-
-          setStatus({
-            state: "ok",
-            message: "Response received",
-          });
-          messageInput.value = "";
-          messageInput.focus();
-        } catch (err) {
-          console.error(err);
-          errorEl.textContent =
-            "Error talking to backend: " +
-            (err && err.message ? err.message : String(err));
-          errorEl.style.display = "block";
-          setStatus({
-            state: "error",
-            message: "Failed to reach backend. Is server running on :3000?",
-          });
-        } finally {
-          sendBtn.disabled = false;
-        }
+      appendMessage("bot", result);
+      speakResponse(resultObj.reply || result);
+      setStatus({ state: "ok", message: "Response received" });
+      messageInput.value = "";
+      messageInput.focus();
+    } catch (err) {
+      sendDebugLog({
+        runId: "pre-fix",
+        hypothesisId: "H3",
+        location: "chat-ui.html:formSubmit:catch",
+        message: "Error during submit handler",
+        data: { error: err && err.message ? err.message : String(err) },
       });
+      console.error(err);
+      errorEl.textContent =
+        "Error talking to backend: " +
+        (err && err.message ? err.message : String(err));
+      errorEl.style.display = "block";
+      setStatus({
+        state: "error",
+        message: "Failed to reach backend. Is server running on :3000?",
+      });
+    } finally {
+      sendBtn.disabled = false;
+    }
+  });
     </script>
   </body>
 </html>
