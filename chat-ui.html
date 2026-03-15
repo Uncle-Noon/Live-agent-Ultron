@@ -404,6 +404,27 @@
       .endpoint-path {
         color: #e5e7eb;
       }
+      .btn-mic {
+        background: rgba(15, 23, 42, 0.95);
+        color: var(--text-muted);
+        border: 1px solid rgba(55, 65, 81, 0.9);
+        transition: all 0.2s ease;
+      }
+      .btn-mic:hover {
+        background: rgba(31, 41, 55, 0.9);
+      }
+      .btn-mic.recording {
+        background: rgba(220, 38, 38, 0.2);
+        color: #ef4444;
+        border-color: rgba(239, 68, 68, 0.5);
+        box-shadow: 0 0 12px rgba(239, 68, 68, 0.4);
+        animation: pulse-red 1.5s infinite;
+      }
+      @keyframes pulse-red {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.03); }
+        100% { transform: scale(1); }
+      }
     </style>
   </head>
   <body>
@@ -469,6 +490,10 @@
               </div>
 
               <div>
+                <button type="button" class="btn-mic" id="micBtn" style="margin-right: 4px;">
+                  <span class="btn-icon">🎤</span>
+                  <span id="micText">Speak</span>
+                </button>
                 <button type="button" class="btn-secondary" id="clearBtn">
                   <span class="btn-icon">✕</span>
                   Clear
@@ -527,6 +552,8 @@
       const statusText = document.getElementById("statusText");
       const clearBtn = document.getElementById("clearBtn");
       const sendBtn = document.getElementById("sendBtn");
+      const micBtn = document.getElementById("micBtn");
+      const micText = document.getElementById("micText");
 
       const API_URL = "http://localhost:3000/api/chat";
 
@@ -539,6 +566,116 @@
           statusDot.classList.remove("err");
           statusDot.classList.add("ok");
         }
+      }
+
+      // ==========================================
+      // Speech Recognition & Synthesis Setup
+      // ==========================================
+      let recognition;
+      let isRecording = false;
+
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+      if (SpeechRecognition) {
+        recognition = new SpeechRecognition();
+        recognition.continuous = true;
+        recognition.interimResults = true;
+        recognition.lang = "en-US";
+
+        recognition.onstart = () => {
+          isRecording = true;
+          if (micBtn) micBtn.classList.add("recording");
+          if (micText) micText.textContent = "Listening...";
+          setStatus({ state: "ok", message: "Listening to microphone..." });
+        };
+
+        recognition.onresult = (event) => {
+          let interimTranscript = "";
+          let finalTranscript = "";
+
+          for (let i = event.resultIndex; i < event.results.length; ++i) {
+            if (event.results[i].isFinal) {
+              finalTranscript += event.results[i][0].transcript;
+            } else {
+              interimTranscript += event.results[i][0].transcript;
+            }
+          }
+
+          if (finalTranscript) {
+            const currentVal = messageInput.value.trim();
+            messageInput.value = currentVal ? `${currentVal} ${finalTranscript}` : finalTranscript;
+          }
+        };
+
+        recognition.onerror = (event) => {
+          console.error("Speech Recognition Error:", event.error);
+          stopRecording();
+          setStatus({ state: "error", message: `Mic Error: ${event.error}` });
+        };
+
+        recognition.onend = () => {
+          stopRecording();
+        };
+      } else {
+        console.warn("Speech recognition not supported in this browser.");
+        if (micBtn) {
+          micBtn.style.display = "none";
+        }
+      }
+
+      function startRecording() {
+        if (!recognition) return;
+        try {
+          if (window.speechSynthesis) {
+             window.speechSynthesis.cancel();
+          }
+          recognition.start();
+        } catch (err) {
+          console.error("Failed to start recognition:", err);
+        }
+      }
+
+      function stopRecording() {
+        if (!recognition) return;
+        isRecording = false;
+        if (micBtn) micBtn.classList.remove("recording");
+        if (micText) micText.textContent = "Speak";
+        recognition.stop();
+        setStatus({ state: "ok", message: "Idle. Ready to send" });
+      }
+
+      if (micBtn) {
+        micBtn.addEventListener("click", () => {
+          if (isRecording) {
+            stopRecording();
+          } else {
+            startRecording();
+          }
+        });
+      }
+
+      function speakResponse(text) {
+        if (!window.speechSynthesis) return;
+
+        window.speechSynthesis.cancel();
+
+        const utterance = new SpeechSynthesisUtterance(text);
+        
+        const voices = window.speechSynthesis.getVoices();
+        const englishVoice = voices.find(v => v.lang.startsWith("en-"));
+        if (englishVoice) {
+             utterance.voice = englishVoice;
+        }
+
+        window.speechSynthesis.speak(utterance);
+      }
+
+      if (window.speechSynthesis) {
+          if (window.speechSynthesis.onvoiceschanged !== undefined) {
+              window.speechSynthesis.onvoiceschanged = () => {
+                  // Voices loaded
+              };
+          }
       }
 
       const COMMANDS_STORAGE_KEY = "ultronCommands";
@@ -882,6 +1019,8 @@
             "bot",
             result,
           );
+
+          speakResponse(result);
 
           setStatus({
             state: "ok",
