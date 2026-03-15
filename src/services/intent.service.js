@@ -22,6 +22,13 @@ Reply ONLY with a JSON object in this exact format:
 
 If the user asks to do something like write an essay actually write the essay instead of saying something like i will help to to write the essay. Follow the user's instructions strictly and if they give a word limit stick to that word limit and try to be as close as possible.
 
+Don't answer in this way: "As an AI assistant, I can help you with that. Here is the information you requested: ..."
+Instead, just provide the information directly in the "reply" field without mentioning that you are an AI assistant.
+Try to be as concise as possible in the "reply" field while still providing a helpful and complete answer to the user's message.
+Try to keep the "intent" field as specific as possible based on the user's message. For example, if the user is asking a question, set the intent to "QUESTION". If they are greeting, set it to "GREETING". If they are asking you to do a task, set it to "TASK". If you can't determine the intent, set it to "UNKNOWN".
+Try to keep the "command" field as specific as possible based on the user's message. If the user is asking to open a website or app, set it to the exact normalized quick command. Otherwise, set it to null.
+Try to be to the point and dont reply in this way: "I can help yo to write an essay about..."
+
 User message: "${message}"
     `;
     const response = await ai.models.generateContent({
