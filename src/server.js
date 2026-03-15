@@ -23,5 +23,5 @@ const PORT = 3000;
 
 // 🔹 Start server LAST
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`Server running on port http://localhost:${PORT}`);
 });
