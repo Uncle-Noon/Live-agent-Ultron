@@ -3,6 +3,7 @@ const path = require("path");
 
 function sanitizeEmailForFolder(email) {
   if (!email || typeof email !== "string") return "anonymous";
+  // Convert to lowercase and replace characters not suitable for file paths
   return email.toLowerCase().replace(/[^a-z0-9@._-]/g, "_");
 }
 
@@ -10,6 +11,7 @@ function sanitizeEmailForFolder(email) {
 function savePromptAsMarkdown(promptText, response, email) {
   const trimmed = (promptText || "").trim();
 
+  // Timestamp-based filename
   const now = new Date();
   const timestamp = now
     .toISOString()
@@ -22,6 +24,7 @@ function savePromptAsMarkdown(promptText, response, email) {
   let folderPath;
   if (email) {
     const safeEmail = sanitizeEmailForFolder(email);
+    // Scope folders inside users/<safeEmail>/prompts
     folderPath = path.join(projectRoot, "users", safeEmail, "prompts");
   } else {
     // Backwards-compatible default: global prompts folder
@@ -39,8 +42,6 @@ function savePromptAsMarkdown(promptText, response, email) {
   // Append entry in the requested syntax:
   // {User Prompt} .....
   // {Reply} ... { time stamp }
-  //
-  // {Next User prompt} ...
   const entry = `{User Prompt} ${trimmed}\n{Reply} ${formattedResponse} {${timestamp}}\n\n`;
 
   // Helper: turn objects into easy-to-read text
@@ -55,8 +56,7 @@ function savePromptAsMarkdown(promptText, response, email) {
       if (reply !== undefined) lines.push(`- *Reply: ${reply}`);
       // Include any additional keys
       for (const [key, value] of Object.entries(rest)) {
-        const val =
-          typeof value === "object" ? JSON.stringify(value, null, 2) : value;
+        const val = typeof value === "object" ? JSON.stringify(value, null, 2) : value;
         lines.push(`- **${key}:** ${val}`);
       }
       return lines.join("\n");
@@ -68,4 +68,4 @@ function savePromptAsMarkdown(promptText, response, email) {
   console.log(`Prompt and response appended to ${filePath}`);
 }
 
-module.exports = savePromptAsMarkdown;
+module.exports = savePromptAsMarkdown;
