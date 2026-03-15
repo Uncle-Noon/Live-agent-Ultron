@@ -1,6 +1,6 @@
 const { GoogleGenAI } = require("@google/genai");
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-const processMessage = async (message, email) => {
+const processMessage = async (message, email, file) => {
   try {
     const prompt = `
 You are an intent detection(personal ai assistant who can perform tasks for the user) bot. Evaluate the user's message like a personal ai assistant.
@@ -20,6 +20,8 @@ Reply ONLY with a JSON object in this exact format:
   "command": "(if the user is asking to open a website or app; the exact normalized quick command the UI should execute, or null)"
 }
 
+Ensure that the "reply" value contains NO markdown formatting (such as asterisks *, underscores _, or backticks \`). Respond in RAW PLAIN TEXT only. Do NOT use markdown bold/italics etc. If providing a list, use plain numbers or dashes ( - ) without styling.
+
 If the user asks to do something like write an essay actually write the essay instead of saying something like i will help to to write the essay. Follow the user's instructions strictly and if they give a word limit stick to that word limit and try to be as close as possible.
 
 Don't answer in this way: "As an AI assistant, I can help you with that. Here is the information you requested: ..."
@@ -31,9 +33,32 @@ Try to be to the point and dont reply in this way: "I can help yo to write an es
 
 User message: "${message}"
     `;
+
+    const isTextFile = file && (
+      file.mimetype.startsWith("text/") ||
+      ["application/json", "application/javascript"].includes(file.mimetype)
+    );
+
+    const contents = file ? [
+      {
+        role: "user",
+        parts: [
+          { text: prompt },
+          isTextFile ? 
+            { text: require("fs").readFileSync(file.path, "utf8") } :
+            {
+              inlineData: {
+                data: require("fs").readFileSync(file.path).toString("base64"),
+                mimeType: file.mimetype,
+              },
+            },
+        ],
+      },
+    ] : prompt;
+
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
-      contents: prompt,
+      contents: contents,
     })
     let rawText = response.text;
     if (rawText.startsWith('\`\`\`json')) {
