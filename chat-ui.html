@@ -480,6 +480,40 @@
               </div>
             </div>
           </form>
+
+          <div style="margin-top: 20px;">
+            <div class="panel-heading" style="margin-bottom: 8px;">
+              <div>
+                <div class="title">Quick commands</div>
+                <div class="subtitle">Type a keyword and send to trigger an action.</div>
+              </div>
+            </div>
+
+            <div class="hint" style="margin-bottom: 10px;">
+              Try: <code>open youtube</code>, <code>open instagram</code>, or add your own.
+            </div>
+
+            <div id="commandList" class="message-list" style="max-height: 160px; overflow-y: auto;">
+              <!-- Commands will render here -->
+            </div>
+
+            <form id="commandForm" class="form" style="margin-top: 12px;">
+              <div class="field-row">
+                <div class="field">
+                  <label class="field-label" for="commandKeyword">Keyword</label>
+                  <input id="commandKeyword" type="text" placeholder="e.g. khul ja sim sim" />
+                </div>
+                <div class="field">
+                  <label class="field-label" for="commandUrl">URL</label>
+                  <input id="commandUrl" type="text" placeholder="e.g. https://www.instagram.com" />
+                </div>
+              </div>
+              <div style="display: flex; justify-content: flex-end; gap: 8px;">
+                <button type="submit" class="btn-secondary" style="padding: 8px 14px;">Add command</button>
+              </div>
+              <div id="commandError" class="error" style="display: none; margin-top: 6px;"></div>
+            </form>
+          </div>
         </section>
       </div>
     </div>
@@ -505,6 +539,154 @@
           statusDot.classList.remove("err");
           statusDot.classList.add("ok");
         }
+      }
+
+      const COMMANDS_STORAGE_KEY = "ultronCommands";
+      const DEFAULT_COMMANDS = [
+        {
+          keyword: "open youtube",
+          url: "https://www.youtube.com",
+          label: "YouTube",
+          aliases: ["youtube", "yt"],
+        },
+        {
+          keyword: "open instagram",
+          url: "https://www.instagram.com",
+          label: "Instagram",
+          aliases: ["instagram", "insta", "ig"],
+        },
+      ];
+
+      const commandListEl = document.getElementById("commandList");
+      const commandForm = document.getElementById("commandForm");
+      const commandKeywordInput = document.getElementById("commandKeyword");
+      const commandUrlInput = document.getElementById("commandUrl");
+      const commandErrorEl = document.getElementById("commandError");
+
+      let customCommands = [];
+
+      function loadCommands() {
+        try {
+          const raw = localStorage.getItem(COMMANDS_STORAGE_KEY);
+          const items = raw ? JSON.parse(raw) : [];
+          if (!Array.isArray(items)) return;
+          customCommands = items
+            .filter((cmd) => cmd && cmd.keyword && cmd.url)
+            .map((cmd) => ({
+              keyword: cmd.keyword,
+              url: cmd.url,
+              label: cmd.label || cmd.keyword,
+              aliases: cmd.aliases || [],
+            }));
+        } catch (err) {
+          console.warn("Failed to load commands", err);
+          customCommands = [];
+        }
+      }
+
+      function saveCommands() {
+        try {
+          localStorage.setItem(COMMANDS_STORAGE_KEY, JSON.stringify(customCommands));
+        } catch (err) {
+          console.warn("Failed to save commands", err);
+        }
+      }
+
+      function getAllCommands() {
+        return [...DEFAULT_COMMANDS, ...customCommands];
+      }
+
+      function renderCommands() {
+        if (!commandListEl) return;
+
+        const commands = getAllCommands();
+        if (!commands.length) {
+          commandListEl.innerHTML =
+            '<div class="empty-state">No commands configured yet.</div>';
+          return;
+        }
+
+        commandListEl.innerHTML = "";
+        commands.forEach((cmd) => {
+          const row = document.createElement("div");
+          row.className = "msg-row";
+          row.style.alignItems = "center";
+          row.style.justifyContent = "space-between";
+          row.style.padding = "8px 10px";
+          row.style.borderBottom = "1px solid rgba(148, 163, 184, 0.1)";
+
+          const label = document.createElement("div");
+          label.innerHTML =
+            `<span style="font-weight:600">${cmd.keyword}</span><br/><span style="font-size:11px;color:rgba(148,163,184,0.9)">${cmd.url}</span>`;
+          row.appendChild(label);
+
+          const isCustom = !DEFAULT_COMMANDS.some(
+            (d) => d.keyword.toLowerCase() === cmd.keyword.toLowerCase()
+          );
+          if (isCustom) {
+            const btn = document.createElement("button");
+            btn.type = "button";
+            btn.className = "btn-secondary";
+            btn.style.padding = "4px 8px";
+            btn.style.fontSize = "11px";
+            btn.textContent = "Delete";
+            btn.addEventListener("click", () => {
+              customCommands = customCommands.filter(
+                (c) => c.keyword.toLowerCase() !== cmd.keyword.toLowerCase()
+              );
+              saveCommands();
+              renderCommands();
+            });
+            row.appendChild(btn);
+          }
+
+          commandListEl.appendChild(row);
+        });
+      }
+
+      function escapeRegExp(value) {
+        return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      }
+
+      function findCommand(message) {
+        const normalized = message.trim().toLowerCase();
+        const commands = getAllCommands();
+
+        const buildTokens = (cmd) => {
+          const base = (cmd.keyword || "").trim().toLowerCase();
+          const aliases = Array.isArray(cmd.aliases) ? cmd.aliases : [];
+          return [base, ...aliases.map((a) => (a || "").trim().toLowerCase())].filter(Boolean);
+        };
+
+        const isWordMatch = (text, token) => {
+          const regexp = new RegExp(`\\b${escapeRegExp(token)}\\b`, "i");
+          return regexp.test(text);
+        };
+
+        // Try exact match against the keyword or any alias.
+        const exact = commands.find((c) => {
+          const tokens = buildTokens(c);
+          return tokens.some((token) => token === normalized);
+        });
+        if (exact) return exact;
+
+        // Otherwise, try to match if message contains a known keyword or alias as a word.
+        return commands.find((c) => {
+          const tokens = buildTokens(c);
+          return tokens.some((token) => isWordMatch(normalized, token));
+        });
+      }
+
+      function tryHandleCommand(message) {
+        const cmd = findCommand(message);
+        if (!cmd) return false;
+
+        window.open(cmd.url, "_blank");
+        appendMessage(
+          "bot",
+          `Opening ${cmd.label || cmd.url}.`
+        );
+        return true;
       }
 
       const STORAGE_KEY = "ultronChatHistory";
@@ -584,6 +766,51 @@
         });
       }
 
+      // Load any saved command definitions and render them
+      loadCommands();
+      renderCommands();
+
+      if (commandForm) {
+        commandForm.addEventListener("submit", (event) => {
+          event.preventDefault();
+          commandErrorEl.style.display = "none";
+
+          const keyword = (commandKeywordInput.value || "").trim();
+          const url = (commandUrlInput.value || "").trim();
+
+          if (!keyword || !url) {
+            commandErrorEl.textContent = "Both keyword and URL are required.";
+            commandErrorEl.style.display = "block";
+            return;
+          }
+
+          try {
+            new URL(url);
+          } catch (err) {
+            commandErrorEl.textContent = "Please enter a valid URL (e.g. https://example.com).";
+            commandErrorEl.style.display = "block";
+            return;
+          }
+
+          const exists = getAllCommands().some(
+            (c) => c.keyword.trim().toLowerCase() === keyword.toLowerCase()
+          );
+          if (exists) {
+            commandErrorEl.textContent = "A command with that keyword already exists.";
+            commandErrorEl.style.display = "block";
+            return;
+          }
+
+          customCommands.push({ keyword, url, label: keyword });
+          saveCommands();
+          renderCommands();
+
+          commandKeywordInput.value = "";
+          commandUrlInput.value = "";
+          commandKeywordInput.focus();
+        });
+      }
+
       clearBtn.addEventListener("click", () => {
         localStorage.removeItem(STORAGE_KEY);
         messageList.innerHTML =
@@ -609,6 +836,11 @@
 
         appendMessage("user", message);
 
+        const commandHandled = tryHandleCommand(message);
+        if (commandHandled) {
+          setStatus({ state: "ok", message: "Command executed" });
+        }
+
         sendBtn.disabled = true;
         setStatus({ state: "loading", message: "Sending request…" });
 
@@ -630,7 +862,21 @@
 
           const data = await res.json();
           const resultObj = data.result;
-const result = `${resultObj.reply}`;
+          const result = `${resultObj.reply}`;
+
+          // If the backend normalized a command (e.g. "open yt" -> "open youtube"), execute it.
+          if (resultObj.command && typeof resultObj.command === "string") {
+            const normalizedCommand = resultObj.command.trim().toLowerCase();
+            const normalizedMessage = message.trim().toLowerCase();
+
+            // Avoid opening twice if the message already directly matched the command
+            if (!commandHandled || normalizedCommand !== normalizedMessage) {
+              const handledByAi = tryHandleCommand(resultObj.command);
+              if (handledByAi) {
+                setStatus({ state: "ok", message: "Command executed" });
+              }
+            }
+          }
 
           appendMessage(
             "bot",
