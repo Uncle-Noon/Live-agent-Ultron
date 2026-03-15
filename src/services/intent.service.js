@@ -1,6 +1,6 @@
 const { GoogleGenAI } = require("@google/genai");
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-const processMessage = async (message) => {
+const processMessage = async (message, email) => {
   try {
     const prompt = `
 You are an intent detection(personal ai assistant who can perform tasks for the user) bot. Evaluate the user's message like a personal ai assistant.
@@ -40,11 +40,11 @@ User message: "${message}"
       rawText = rawText.replace(/\`\`\`json/g, '').replace(/\`\`\`/g, '').trim();
     }
     const result = JSON.parse(rawText);
-   
-    // Save prompt and response to markdown file
-    const savePromptAsMarkdown = require('../../to_md.js');
-    savePromptAsMarkdown(message, result);
-   
+
+    // Save prompt and response to markdown file (scoped by user email if provided)
+    const savePromptAsMarkdown = require("../../to_md.js");
+    savePromptAsMarkdown(message, result, email);
+
     return result;
   }
 
