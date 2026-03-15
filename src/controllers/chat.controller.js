@@ -138,6 +138,15 @@ const getHistory = (req, res) => {
 
   const promptsDir = getUserPromptsDir(email);
 
+  const extractReply = (replyText) => {
+    const replyMatch = replyText.match(/- \*Reply:\s*([\s\S]*?)(?=- \*\*|$)/);
+    if (replyMatch) return replyMatch[1].trim();
+    return replyText
+      .replace(/- \*Intent:[^\n]*\n?/, "")
+      .replace(/- \*Reply:\s*/, "")
+      .trim();
+  };
+
   if (!fs.existsSync(promptsDir)) {
     return res.json({ history: [] });
   }
@@ -180,7 +189,7 @@ const getHistory = (req, res) => {
           messages.push({ role: "user", content: promptText });
         }
         if (responseText) {
-          messages.push({ role: "bot", content: responseText });
+          messages.push({ role: "bot", content: extractReply(responseText) });
         }
       } catch (err) {
         console.warn("Failed to parse history file", file, err);
@@ -218,8 +227,10 @@ const getHistory = (req, res) => {
 
     const userText = userLine.replace("{User Prompt}", "").trim();
 
+    // Join all lines from index 1 onwards to handle multi-line responses
+    let replyText = lines.slice(1).join("\n").replace("{Reply}", "").trim();
+
     // Remove trailing {timestamp} if present
-    let replyText = replyLine.replace("{Reply}", "").trim();
     const tsMatch = replyText.match(/\{[^}]*\}\s*$/);
     if (tsMatch) {
       replyText = replyText.slice(0, tsMatch.index).trim();
@@ -229,12 +240,38 @@ const getHistory = (req, res) => {
       messages.push({ role: "user", content: userText });
     }
     if (replyText) {
-      messages.push({ role: "bot", content: replyText });
+      messages.push({ role: "bot", content: extractReply(replyText) });
     }
   });
 
   return res.json({ history: messages });
 };
 
-module.exports = { handleChat, handleLogin, getHistory };
+const handleChatFile = async (req, res) => {
+  const { message, email } = req.body || {};
+  const file = req.file;
+
+  if (!file) {
+    return res.status(400).json({ error: "No file uploaded." });
+  }
+
+  // Prepend descriptive prefix with original filename
+  const messageWithFile = `[File: ${file.originalname}] ${message || ""}`;
+
+  try {
+    const result = await processMessage(messageWithFile, email, file);
+
+    // Clean up file from disk asynchronously
+    fs.unlink(file.path, (err) => {
+      if (err) console.error("Failed to delete uploaded file:", file.path, err);
+    });
+
+    res.json({ result });
+  } catch (err) {
+    console.error("handleChatFile error:", err);
+    res.status(500).json({ error: "Failed to process message with file." });
+  }
+};
+
+module.exports = { handleChat, handleLogin, getHistory, handleChatFile };
 console.log("[Controller Layer]");
