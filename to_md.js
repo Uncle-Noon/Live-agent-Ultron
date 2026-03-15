@@ -1,15 +1,11 @@
 const fs = require("fs");
 const path = require("path");
 
-function sanitizeEmailForFolder(email) {
-  if (!email || typeof email !== "string") return "anonymous";
-  return email.toLowerCase().replace(/[^a-z0-9@._-]/g, "_");
-}
-
 // Ask user for a prompt and save it as a standalone .md file
-function savePromptAsMarkdown(promptText, response, email) {
-  const trimmed = (promptText || "").trim();
+function savePromptAsMarkdown(promptText, response) {
+  const trimmed = promptText.trim();
 
+  // Timestamp-based filename
   const now = new Date();
   const timestamp = now
     .toISOString()
@@ -17,31 +13,20 @@ function savePromptAsMarkdown(promptText, response, email) {
     .replace("T", "_")
     .slice(0, 19); // keep up to seconds
 
-  const projectRoot = path.join(__dirname);
+  const fileName = `prompt_${timestamp}.md`;
 
-  let folderPath;
-  if (email) {
-    const safeEmail = sanitizeEmailForFolder(email);
-    folderPath = path.join(projectRoot, "users", safeEmail, "prompts");
-  } else {
-    // Backwards-compatible default: global prompts folder
-    folderPath = path.join(projectRoot, "prompts");
-  }
+  // Save in a folder next to this script
+  const folderPath = './prompts';
 
   fs.mkdirSync(folderPath, { recursive: true });
 
-  // Single rolling conversation file per user / global scope
-  const filePath = path.join(folderPath, "conversation.md");
+  const filePath = path.join(folderPath, fileName);
 
   // Format response for human readability (avoid raw JSON brackets)
   const formattedResponse = formatResponse(response);
 
-  // Append entry in the requested syntax:
-  // {User Prompt} .....
-  // {Reply} ... { time stamp }
-  //
-  // {Next User prompt} ...
-  const entry = `{User Prompt} ${trimmed}\n{Reply} ${formattedResponse} {${timestamp}}\n\n`;
+  // Simple markdown content
+  const content = `# Saved at ${timestamp}\n# Prompt\n${trimmed}\n# Response\n${formattedResponse}`;
 
   // Helper: turn objects into easy-to-read text
   function formatResponse(resp) {
@@ -55,8 +40,7 @@ function savePromptAsMarkdown(promptText, response, email) {
       if (reply !== undefined) lines.push(`- *Reply: ${reply}`);
       // Include any additional keys
       for (const [key, value] of Object.entries(rest)) {
-        const val =
-          typeof value === "object" ? JSON.stringify(value, null, 2) : value;
+        const val = typeof value === "object" ? JSON.stringify(value, null, 2) : value;
         lines.push(`- **${key}:** ${val}`);
       }
       return lines.join("\n");
@@ -64,8 +48,8 @@ function savePromptAsMarkdown(promptText, response, email) {
     return String(resp);
   }
 
-  fs.appendFileSync(filePath, entry, "utf8");
-  console.log(`Prompt and response appended to ${filePath}`);
-}
+  fs.writeFileSync(filePath, content, "utf8");
+  console.log(`Prompt and response saved to ${filePath}`);
+};
 
 module.exports = savePromptAsMarkdown;
