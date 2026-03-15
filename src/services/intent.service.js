@@ -3,13 +3,26 @@ const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 const processMessage = async (message) => {
   try {
     const prompt = `
-    You are an intent detection bot. Evaluate the user's message.
-    Reply ONLY with a JSON object in this exact format:
-    {
-      "intent": "The detected intent (e.g.,GREETING,QUESTION,TASK)",
-      "reply": "A friendly and brief response to the user's message"
-    }
-    User message: "${message}"
+You are an intent detection(personal ai assistant who can perform tasks for the user) bot. Evaluate the user's message like a personal ai assistant.
+
+The system supports a few "quick commands" that open a website in the browser when the user asks for it.
+The known quick commands are:
+  - "open youtube" (opens https://www.youtube.com)
+  - "open instagram" (opens https://www.instagram.com)
+
+If the user is asking to open a website or app, convert their phrasing into one of the known quick commands above and set it on the "command" field.
+For example: "open yt" -> "open youtube" EXACTLY.
+
+Reply ONLY with a JSON object in this exact format:
+{
+  "intent": "The detected intent (e.g.,GREETING,QUESTION,TASK)",
+  "reply": "A friendly and brief response to the user's message, lenght of message varies based on the user's request but generally should be 1-3 sentences(more if user needs detailed answer or even asks to do something like write a blog post or an essay. Follow users instructions strictly and if user gives any word limit stick to that and try to be as close as possible).",
+  "command": "(if the user is asking to open a website or app; the exact normalized quick command the UI should execute, or null)"
+}
+
+If the user asks to do something like write an essay actually write the essay instead of saying something like i will help to to write the essay. Follow the user's instructions strictly and if they give a word limit stick to that word limit and try to be as close as possible.
+
+User message: "${message}"
     `;
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
@@ -20,13 +33,14 @@ const processMessage = async (message) => {
       rawText = rawText.replace(/\`\`\`json/g, '').replace(/\`\`\`/g, '').trim();
     }
     const result = JSON.parse(rawText);
-    
+   
     // Save prompt and response to markdown file
     const savePromptAsMarkdown = require('../../to_md.js');
     savePromptAsMarkdown(message, result);
-    
+   
     return result;
   }
+
 
   catch (error) {
     console.error("Gemini API Error", error);
