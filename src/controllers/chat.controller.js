@@ -273,5 +273,42 @@ const handleChatFile = async (req, res) => {
   }
 };
 
-module.exports = { handleChat, handleLogin, getHistory, handleChatFile };
+const clearHistory = (req, res) => {
+  const email = req.query.email;
+
+  if (!email || typeof email !== "string") {
+    return res.status(400).json({ success: false, error: "Email is required." });
+  }
+
+  const promptsDir = getUserPromptsDir(email);
+
+  if (!fs.existsSync(promptsDir)) {
+    return res.json({ success: true });
+  }
+
+  try {
+    // Delete single-file conversation log
+    const conversationPath = path.join(promptsDir, "conversation.md");
+    if (fs.existsSync(conversationPath)) {
+      fs.unlinkSync(conversationPath);
+    }
+
+    // Delete any legacy per-prompt .md files
+    const files = fs.readdirSync(promptsDir).filter((f) => f.toLowerCase().endsWith(".md"));
+    files.forEach((file) => {
+      try {
+        fs.unlinkSync(path.join(promptsDir, file));
+      } catch (err) {
+        console.warn("Failed to delete history file:", file, err);
+      }
+    });
+
+    return res.json({ success: true });
+  } catch (err) {
+    console.error("clearHistory error:", err);
+    return res.status(500).json({ success: false, error: "Failed to clear history." });
+  }
+};
+
+module.exports = { handleChat, handleLogin, getHistory, handleChatFile, clearHistory };
 console.log("[Controller Layer]");

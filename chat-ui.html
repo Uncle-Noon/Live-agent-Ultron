@@ -786,6 +786,11 @@
     }
 
     const COMMANDS_STORAGE_KEY = "ultronCommands";
+
+    function getCommandsKey() {
+      const email = localStorage.getItem("ultronEmail") || "";
+      return email ? `${COMMANDS_STORAGE_KEY}_${email}` : COMMANDS_STORAGE_KEY;
+    }
     const DEFAULT_COMMANDS = [
       {
         keyword: "open youtube",
@@ -811,7 +816,7 @@
 
     function loadCommands() {
       try {
-        const raw = localStorage.getItem(COMMANDS_STORAGE_KEY);
+        const raw = localStorage.getItem(getCommandsKey());
         const items = raw ? JSON.parse(raw) : [];
         if (!Array.isArray(items)) return;
         customCommands = items
@@ -830,7 +835,7 @@
 
     function saveCommands() {
       try {
-        localStorage.setItem(COMMANDS_STORAGE_KEY, JSON.stringify(customCommands));
+        localStorage.setItem(getCommandsKey(), JSON.stringify(customCommands));
       } catch (err) {
         console.warn("Failed to save commands", err);
       }
@@ -1005,14 +1010,24 @@
           history.splice(0, history.length - MAX_HISTORY_ITEMS);
         }
         saveHistory(history);
+
+        // Lift the "cleared" gate now that the user has new messages.
+        // Without this, history would be suppressed forever after a clear.
+        const currentEmail = localStorage.getItem("ultronEmail") || "";
+        if (currentEmail) {
+          localStorage.removeItem(`ultronHistoryCleared_${currentEmail}`);
+        }
       }
     }
 
     async function restoreHistory() {
       const email = localStorage.getItem("ultronEmail") || "";
+      const clearedFlagKey = email ? `ultronHistoryCleared_${email}` : "";
+      const clearedAt = clearedFlagKey ? parseInt(localStorage.getItem(clearedFlagKey) || "0", 10) : 0;
+
       if (!email) {
-        // Fallback to local
-        const history = getStoredHistory();
+        // No user logged in — only show local history that was written AFTER any cleared-at timestamp
+        const history = getStoredHistory().filter((item) => !clearedAt || (item.timestamp || 0) > clearedAt);
         if (history.length) {
           history.forEach((item) => appendMessage(item.role, item.content, item.meta, { save: false }));
         }
@@ -1023,26 +1038,27 @@
         const res = await fetch(`http://localhost:3000/api/history?email=${encodeURIComponent(email)}`);
         if (!res.ok) throw new Error("Failed to load backend history");
         const { history } = await res.json();
-        
+
         if (history && Array.isArray(history) && history.length > 0) {
+
           // Clear any initial/placeholder messages
           if (messageList.querySelector(".empty-state")) {
-              messageList.innerHTML = "";
+            messageList.innerHTML = "";
           }
           history.forEach((item) => {
             appendMessage(item.role, item.content, null, { save: false });
           });
         } else {
-          // Fallback to local
-          const localHistory = getStoredHistory();
+          // Backend is empty; only fall back to local history written AFTER the cleared-at timestamp
+          const localHistory = getStoredHistory().filter((item) => !clearedAt || (item.timestamp || 0) > clearedAt);
           if (localHistory.length) {
             localHistory.forEach((item) => appendMessage(item.role, item.content, item.meta, { save: false }));
           }
         }
       } catch (err) {
         console.warn("Could not load history from backend:", err);
-        // Fallback
-        const history = getStoredHistory();
+        // Fallback — only local history written AFTER cleared-at
+        const history = getStoredHistory().filter((item) => !clearedAt || (item.timestamp || 0) > clearedAt);
         if (history.length) {
           history.forEach((item) => appendMessage(item.role, item.content, item.meta, { save: false }));
         }
@@ -1094,8 +1110,29 @@
       });
     }
 
-    clearBtn.addEventListener("click", () => {
-      localStorage.removeItem(STORAGE_KEY);
+    clearBtn.addEventListener("click", async () => {
+      const email = localStorage.getItem("ultronEmail") || "";
+
+      // 1. Remove the per-user localStorage history
+      localStorage.removeItem(getStorageKey());
+
+      // 2. Persist a "cleared at" timestamp so restoreHistory() skips backend data
+      if (email) {
+        localStorage.setItem(`ultronHistoryCleared_${email}`, String(Date.now()));
+      }
+
+      // 3. Also wipe the server-side history file so it doesn't resurface
+      if (email) {
+        try {
+          await fetch(
+            `http://localhost:3000/api/history?email=${encodeURIComponent(email)}`,
+            { method: "DELETE" }
+          );
+        } catch (err) {
+          console.warn("Could not clear backend history:", err);
+        }
+      }
+
       messageList.innerHTML =
         '<div class="empty-state">Cleared history. Send a new message to start a fresh trace.</div>';
       errorEl.style.display = "none";
