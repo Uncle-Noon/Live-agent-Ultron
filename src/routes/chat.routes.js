@@ -5,6 +5,7 @@ const {
   handleLogin,
   getHistory,
   handleChatFile,
+  clearHistory,
 } = require("../controllers/chat.controller");
 
 const multer = require("multer");
@@ -31,5 +32,6 @@ router.post(
 router.post("/chat-file", upload.single("file"), handleChatFile);
 router.post("/login", handleLogin);
 router.get("/history", getHistory);
+router.delete("/history", clearHistory);
 
 module.exports = router;
