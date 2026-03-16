@@ -69,9 +69,11 @@ async function generateReply(contents, { commands = [] } = {}) {
   const response = await withRetry(() =>
     ai.models.generateContent({
       model: AI_MODEL,
-      systemInstruction: buildSystemInstruction(commands),
       contents,
-      config: { responseMimeType: 'application/json' }
+      config: { 
+        systemInstruction: buildSystemInstruction(commands),
+        responseMimeType: 'application/json' 
+      }
     })
   );
   return parseResponse(response.text);
@@ -82,9 +84,11 @@ async function generateReplyStream(contents, { onChunk, onDone, onError, command
     const stream = await withRetry(() =>
       ai.models.generateContentStream({
         model: AI_MODEL,
-        systemInstruction: buildSystemInstruction(commands),
         contents,
-        config: { responseMimeType: 'application/json' }
+        config: { 
+          systemInstruction: buildSystemInstruction(commands),
+          responseMimeType: 'application/json' 
+        }
       })
     );
     let full = '';

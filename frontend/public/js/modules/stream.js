@@ -40,7 +40,7 @@ export async function sendStream(message, listEl, onDone, onError) {
         if (parsed.chunk)  {
           full += parsed.chunk;
           // Extract "reply" portion from accumulating JSON
-          const m = full.match(/"reply"\s*:\s*"((?:[^"\\]|\\.)*)"/);
+          const m = full.match(/"(?:reply|text)"\s*:\s*"((?:[^"\\]|\\.)*)/);
           if (m) {
             txtNode.textContent = m[1].replace(/\\n/g,'\n').replace(/\\"/g,'"').replace(/\\\\/g,'\\');
           } else {

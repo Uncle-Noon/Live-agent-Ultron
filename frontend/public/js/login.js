@@ -1,19 +1,20 @@
 /**
  * login.js — entry point for the login page.
  */
-import { setEmail, currentEmail } from './modules/auth.js';
+import { setEmail, clearEmail, currentEmail } from './modules/auth.js';
 import { login } from './modules/api.js';
 
-const form      = document.getElementById('loginForm');
+const form       = document.getElementById('loginForm');
 const emailInput = document.getElementById('emailInput');
-const loginBtn  = document.getElementById('loginBtn');
-const statusEl  = document.getElementById('loginStatus');
+const loginBtn   = document.getElementById('loginBtn');
+const statusEl   = document.getElementById('loginStatus');
 
-// Auto-redirect if already logged in
-const saved = currentEmail();
-if (saved) {
-  window.location.href = '/chat';
-}
+// Always require login — clear any stored session on page load
+clearEmail();
+
+// Pre-fill the email field with the last used address (convenience)
+const lastEmail = localStorage.getItem('ultronLastEmail');
+if (lastEmail) emailInput.value = lastEmail;
 
 form.addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -32,6 +33,7 @@ form.addEventListener('submit', async (e) => {
   try {
     await login(email);
     setEmail(email);
+    localStorage.setItem('ultronLastEmail', email);
     window.location.href = '/chat';
   } catch (err) {
     statusEl.textContent = 'Sign-in failed: ' + err.message;

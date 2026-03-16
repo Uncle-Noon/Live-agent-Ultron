@@ -12,6 +12,12 @@ import { initSpeech, isListening, startRecording, stopRecording, speak } from '.
 import { sendStream } from './modules/stream.js';
 import { normalizeUrl, isValidDomain } from './modules/url.js';
 
+// ── Auth Guard ────────────────────────────────────────────────────────────────
+const email = currentEmail();
+if (!email) {
+  window.location.href = '/';
+}
+
 // ── Element refs ──────────────────────────────────────────────────────────────
 const $ = (id) => document.getElementById(id);
 const listEl       = $('messageList');
@@ -68,7 +74,7 @@ micBtn.addEventListener('click', () => isListening() ? stopRecording() : startRe
 clearBtn.addEventListener('click', () => clearAll(listEl));
 
 // ── Switch account ─────────────────────────────────────────────────────────────
-switchBtn.addEventListener('click', () => { clearEmail(); window.location.href = '/login'; });
+switchBtn.addEventListener('click', () => { clearEmail(); window.location.href = '/'; });
 
 
 cmdForm.addEventListener('submit', async (e) => {

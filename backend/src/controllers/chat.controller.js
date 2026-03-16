@@ -60,6 +60,11 @@ const handleChatFile = async (req, res) => {
   const file = req.file;
   if (!file) return res.status(400).json({ error: 'No file uploaded.' });
 
+  const { MAX_MESSAGE_LENGTH } = require('../config/app.config');
+  if (message && message.length > MAX_MESSAGE_LENGTH) {
+    return res.status(400).json({ error: `Message is too long (max ${MAX_MESSAGE_LENGTH} chars).` });
+  }
+
   try {
     const isText = file.mimetype.startsWith('text/') ||
       ['application/json', 'application/javascript'].includes(file.mimetype);

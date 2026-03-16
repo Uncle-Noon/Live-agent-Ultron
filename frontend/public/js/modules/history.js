@@ -29,6 +29,8 @@ export async function restoreHistory(listEl) {
     const { history } = await fetchHistory(email);
     if (history?.length) {
       listEl.querySelector('.empty-state') && (listEl.innerHTML = '');
+      // Sync local storage with server truth
+      try { localStorage.setItem(storageKey(), JSON.stringify(history)); } catch {}
       history.forEach(i => appendMessage(listEl, i.role, i.content, { save: false }));
     } else {
       addItems(readLocal().filter(i => !clearedAt || (i.timestamp||0) > clearedAt));

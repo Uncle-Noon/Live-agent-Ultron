@@ -1,4 +1,4 @@
-export const API_BASE           = 'http://localhost:5000/api';
+export const API_BASE           = '/api';
 export const MAX_MESSAGE_LENGTH = 4000;
 export const MAX_HISTORY_ITEMS  = 200;
 export const STORAGE_KEY        = 'ultronChatHistory';
