@@ -1,3 +1,0 @@
-runtime: nodejs18
-env: standard
-service: default
