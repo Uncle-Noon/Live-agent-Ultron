@@ -5,8 +5,7 @@ const cors = require('cors');
 const compression = require('compression');
 const path = require('path');
 const makeLogger = require('./utils/logger');
-
-
+const { PORT } = require('./config/app.config');
 const chatRoutes = require('./routes/chat.routes');
 
 const log = makeLogger('server');
@@ -29,8 +28,7 @@ app.get('/', (_, res) => res.sendFile(path.join(PUBLIC_DIR, 'login.html')));
 app.get('/chat', (_, res) => res.sendFile(path.join(PUBLIC_DIR, 'chat.html')));
 
 // ── Start ─────────────────────────────────────────────────────────────────────
-const PORT = process.env.PORT || 3000;
-
-app.listen(PORT, () => {
-  console.log(`\nServer is running on port ${PORT}\n`);
+const BACKEND_PORT = 3000;
+app.listen(BACKEND_PORT, () => {
+  console.log(`\nServer is running at http://localhost:${BACKEND_PORT}\n  Ctrl+Click to open\n`);
 });

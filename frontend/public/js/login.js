@@ -16,6 +16,14 @@ clearEmail();
 const lastEmail = localStorage.getItem('ultronLastEmail');
 if (lastEmail) emailInput.value = lastEmail;
 
+// Enter to login
+emailInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    form.requestSubmit();
+  }
+});
+
 form.addEventListener('submit', async (e) => {
   e.preventDefault();
   const email = emailInput.value.trim();

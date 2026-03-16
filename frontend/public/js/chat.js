@@ -28,6 +28,7 @@ const errorEl      = $('error');
 const statusDot    = $('statusDot');
 const statusText   = $('statusText');
 const sendBtn      = $('sendBtn');
+const stopBtn      = $('stopBtn');
 const clearBtn     = $('clearBtn');
 const micBtn       = $('micBtn');
 const micText      = $('micText');
@@ -50,6 +51,14 @@ msgInput.addEventListener('input', () => {
   charCounter.textContent = `${len} / ${MAX_MESSAGE_LENGTH}`;
   charCounter.classList.toggle('warn', len > 3500 && len <= MAX_MESSAGE_LENGTH);
   charCounter.classList.toggle('over', len > MAX_MESSAGE_LENGTH);
+});
+
+// Enter to send
+msgInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    form.requestSubmit();
+  }
 });
 
 // ── File upload ───────────────────────────────────────────────────────────────
@@ -97,6 +106,20 @@ cmdForm.addEventListener('submit', async (e) => {
   } catch (err) { cmdError.textContent = err.message; cmdError.style.display = 'block'; }
 });
 
+// Command form navigation
+cmdKeyword.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    cmdUrl.focus();
+  }
+});
+cmdUrl.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    cmdForm.requestSubmit();
+  }
+});
+
 // ── Chat form ─────────────────────────────────────────────────────────────────
 form.addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -113,6 +136,8 @@ form.addEventListener('submit', async (e) => {
 
   sendBtn.disabled = true;
   st('ok', 'Sending…');
+
+  let abortController = null;
 
   try {
     // ── Local command match: instant, no AI call needed ───────────────────────
@@ -134,13 +159,20 @@ form.addEventListener('submit', async (e) => {
       resetFile();
     } else {
       // ── Regular AI query via streaming ───────────────────────────────────────
+      abortController = new AbortController();
+      stopBtn.style.display = 'inline-flex';
+      sendBtn.style.display = 'none';
+
+      stopBtn.onclick = () => {
+        abortController.abort();
+        st('ok', 'Interrupted by user');
+      };
+
       await sendStream(message, listEl,
         (result) => {
           if (result?.command) {
             const c2 = findCommand(result.command);
             if (c2) {
-              // Safety check: make sure the reply text is consistent with the resolved command.
-              // If the reply says "YouTube" but the command resolved to Instagram, trust the reply instead.
               const replyLower = (result.reply || '').toLowerCase();
               const labelMatch = (c2.label || c2.keyword || '').toLowerCase();
               const replyMatchesCmd = replyLower.includes(labelMatch) ||
@@ -148,7 +180,6 @@ form.addEventListener('submit', async (e) => {
               if (replyMatchesCmd) {
                 window.open(c2.url, '_blank');
               } else {
-                // Reply and command disagree — try to find the right command from the reply
                 const c3 = findCommand(result.reply);
                 window.open((c3 || c2).url, '_blank');
               }
@@ -156,16 +187,27 @@ form.addEventListener('submit', async (e) => {
           }
           st('ok', 'Done');
         },
-        (err) => { errorEl.textContent = 'Error: ' + err.message; errorEl.style.display = 'block'; st('error', 'Failed'); }
+        (err) => { 
+          if (err.name !== 'AbortError') {
+            errorEl.textContent = 'Error: ' + err.message; 
+            errorEl.style.display = 'block'; 
+            st('error', 'Failed'); 
+          }
+        },
+        abortController.signal
       );
     }
     msgInput.value = ''; charCounter.textContent = `0 / ${MAX_MESSAGE_LENGTH}`; charCounter.classList.remove('warn','over');
-    st('ok', 'Idle. Ready to send');
+    if (!abortController?.signal.aborted) st('ok', 'Idle. Ready to send');
   } catch (err) {
-    errorEl.textContent = 'Error: ' + err.message; errorEl.style.display = 'block';
-    st('error', 'Failed to reach server — is it running?');
+    if (err.name !== 'AbortError') {
+      errorEl.textContent = 'Error: ' + err.message; errorEl.style.display = 'block';
+      st('error', 'Failed to reach server — is it running?');
+    }
   } finally {
     sendBtn.disabled = false;
+    sendBtn.style.display = 'inline-flex';
+    stopBtn.style.display = 'none';
     msgInput.focus();
   }
 });
