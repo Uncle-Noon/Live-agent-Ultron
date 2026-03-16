@@ -52,6 +52,14 @@ msgInput.addEventListener('input', () => {
   charCounter.classList.toggle('over', len > MAX_MESSAGE_LENGTH);
 });
 
+// Enter to send
+msgInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    form.requestSubmit();
+  }
+});
+
 // ── File upload ───────────────────────────────────────────────────────────────
 fileInput.addEventListener('change', () => {
   if (fileInput.files.length) { fileNameEl.textContent = fileInput.files[0].name; clearFileBtn.style.display = 'inline-flex'; }
@@ -95,6 +103,20 @@ cmdForm.addEventListener('submit', async (e) => {
     await saveCommand(kw, url, cmdList);
     cmdKeyword.value = ''; cmdUrl.value = ''; cmdKeyword.focus();
   } catch (err) { cmdError.textContent = err.message; cmdError.style.display = 'block'; }
+});
+
+// Command form navigation
+cmdKeyword.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    cmdUrl.focus();
+  }
+});
+cmdUrl.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    cmdForm.requestSubmit();
+  }
 });
 
 // ── Chat form ─────────────────────────────────────────────────────────────────
