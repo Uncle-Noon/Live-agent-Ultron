@@ -179,6 +179,25 @@ graph TD
 
 ---
 
+## 🚀 Automated Deployment
+
+Ultron is optimized for modern CI/CD workflows. We have included an automated deployment script that handles the entire pipeline:
+1.  **Building** the Docker image using Google Cloud Build.
+2.  **Pushing** the image to GCR (Google Container Registry).
+3.  **Deploying** the container to Google Cloud Run with the correct port and permission settings.
+
+**Run the automated deployment:**
+```bash
+# Make the script executable
+chmod +x deploy.sh
+
+# Run the deployment
+./deploy.sh
+```
+> View the automation script here: [deploy.sh](deploy.sh)
+
+---
+
 ## 📁 Project Structure
 
 ```
