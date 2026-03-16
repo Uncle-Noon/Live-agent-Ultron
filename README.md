@@ -1,5 +1,9 @@
 # ⚡ Ultron — Your AI Personal Assistant
 
+**📺 [Watch Demo Video](https://youtu.be/GIhcZOY3DEI)** | **🏆 [Hackathon Submission](https://devpost.com/software/live-agent-ultron)**
+
+---
+
 Ultron is a sleek, fast, and powerful AI assistant that lives in your browser. Talk to it, give it commands, and it gets things done — opening websites, answering questions, reading files, and more. Built on Google Gemini, it's smart, responsive, and completely yours to run locally.
 
 ---
