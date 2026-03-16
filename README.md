@@ -76,6 +76,11 @@ Once the app is running, follow these steps to verify its core capabilities:
 - **Action:** Speak a message, wait for it to transcribe, and click send.
 - **Action:** Ensure your volume is up to hear Ultron's **Voice Output**.
 
+### 7. Chat Memory
+- **Action:** Type *"My name is [name] and I am [age] years old"* and press Enter.
+- **Action:** Then later type *"What is my name and how old am I?"* and press Enter.
+- **Expectation:** Ultron will go through the chat history and give your name and age.
+
 ---
 
 ## ✨ Features
