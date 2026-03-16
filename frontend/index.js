@@ -9,8 +9,8 @@ const PUBLIC_DIR = path.join(__dirname, 'public');
 app.use(express.static(PUBLIC_DIR));
 
 // Fallback HTML page routes
-app.get('/',      (_, res) => res.sendFile(path.join(PUBLIC_DIR, 'chat.html')));
-app.get('/login', (_, res) => res.sendFile(path.join(PUBLIC_DIR, 'login.html')));
+app.get('/',      (_, res) => res.sendFile(path.join(PUBLIC_DIR, 'login.html')));
+app.get('/chat',  (_, res) => res.sendFile(path.join(PUBLIC_DIR, 'chat.html')));
 
 app.listen(PORT, () => {
   console.log(`Frontend running at http://localhost:${PORT}`);

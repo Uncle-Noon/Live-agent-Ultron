@@ -9,9 +9,11 @@ const emailInput = document.getElementById('emailInput');
 const loginBtn  = document.getElementById('loginBtn');
 const statusEl  = document.getElementById('loginStatus');
 
-// Pre-fill if already logged in
+// Auto-redirect if already logged in
 const saved = currentEmail();
-if (saved) emailInput.value = saved;
+if (saved) {
+  window.location.href = '/chat';
+}
 
 form.addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -30,7 +32,7 @@ form.addEventListener('submit', async (e) => {
   try {
     await login(email);
     setEmail(email);
-    window.location.href = '/';
+    window.location.href = '/chat';
   } catch (err) {
     statusEl.textContent = 'Sign-in failed: ' + err.message;
     statusEl.style.color = '#f87171';
