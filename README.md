@@ -130,6 +130,55 @@ No API keys ever reach the browser. Your Gemini key stays on the server only.
 
 ---
 
+## 🏗️ System Architecture
+
+Below is a visual representation of how Ultron connects its multimodal components, backend services, and the Gemini API.
+
+```mermaid
+graph TD
+    subgraph "Client Layer (Web Browser)"
+        UI["UI (HTML/CSS/JS)"]
+        Camera["MediaDevices API (Vision)"]
+        Audio["Web Speech API (STT/TTS)"]
+    end
+
+    subgraph "Server Layer (Google Cloud Run)"
+        API["Express Router"]
+        ChatCtrl["Chat Controller"]
+        AISvc["AI Service (Gemini Wrapper)"]
+        HistSvc["History Service"]
+        CmdSvc["Commands Service"]
+    end
+
+    subgraph "External AI Layer"
+        Gemini["Google Gemini 2.0 Flash"]
+    end
+
+    subgraph "Data Storage Layer (Persistence)"
+        History["Chat History (JSON)"]
+        Keywords["Custom Keywords (JSON)"]
+        Uploads["File Uploads (/uploads)"]
+    end
+
+    %% Interactions
+    UI <--> API
+    Camera --> UI
+    Audio <--> UI
+    
+    API <--> ChatCtrl
+    ChatCtrl <--> AISvc
+    ChatCtrl <--> HistSvc
+    ChatCtrl <--> CmdSvc
+    
+    AISvc <--> Gemini
+    
+    HistSvc <--> History
+    CmdSvc <--> Keywords
+    ChatCtrl --> Uploads
+```
+
+---
+
 ## 📁 Project Structure
 
 ```
