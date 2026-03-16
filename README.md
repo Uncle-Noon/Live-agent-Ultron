@@ -22,6 +22,8 @@ GEMINI_API_KEY=your_key_here
 ```
 
 **3. Install dependencies**
+
+Open terminal and do:
 ```bash
 npm install
 ```
