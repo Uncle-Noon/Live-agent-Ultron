@@ -1,7 +1,7 @@
 # Environment variables - NEVER commit API keys
 .env
-.env.local
-.env.*.local
+**/.env
+**/.env.local
 
 # Node dependencies
 node_modules/
@@ -14,9 +14,8 @@ nodemon-debug.log*
 gemini-error.txt
 
 # User data (generated at runtime - do not commit)
-users/
-uploads/
-prompts/
+**/users/
+**/uploads/
 
 # OS files
 .DS_Store
