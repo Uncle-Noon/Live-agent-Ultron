@@ -1,0 +1,63 @@
+/* ── Message list ── */
+.message-list {
+  background: radial-gradient(circle at top left, #020617 0, #020617 45%);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-dark);
+  padding: 10px 12px 12px;
+  max-height: 340px;
+  overflow-y: auto;
+  font-size: 13px;
+  scroll-behavior: smooth;
+}
+@media (min-width: 901px) {
+  .message-list { flex: 1; max-height: none !important; }
+}
+
+/* ── Message rows ── */
+.msg-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+  animation: fadeIn 0.2s ease;
+}
+.msg-role {
+  width: 44px;
+  text-align: right;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  flex-shrink: 0;
+  padding-top: 8px;
+}
+.msg-content {
+  flex: 1;
+  padding: 7px 9px;
+  border-radius: var(--radius-md);
+  line-height: 1.65;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.msg-content.user { background: rgba(15,23,42,0.95); border: 1px solid var(--border-input); }
+.msg-content.bot  { background: var(--teal-soft);    border: 1px solid var(--teal-border); }
+
+/* ── Streaming cursor ── */
+.streaming-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  background: var(--accent);
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  animation: blink 0.8s ease infinite;
+}
+
+/* ── Char counter ── */
+.char-counter      { font-size: 11px; color: var(--text-muted); transition: color 0.2s; }
+.char-counter.warn { color: var(--warning); }
+.char-counter.over { color: var(--error); }
+
+/* ── Command list rows ── */
+.cmd-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px; border-bottom: 1px solid rgba(148,163,184,0.1); }
+.cmd-keyword { font-weight: 600; font-size: 13px; }
+.cmd-url     { font-size: 11px; color: rgba(148,163,184,0.85); }

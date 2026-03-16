@@ -10,6 +10,14 @@ node_modules/
 npm-debug.log*
 nodemon-debug.log*
 
+# Debug artifacts
+gemini-error.txt
+
+# User data (generated at runtime - do not commit)
+users/
+uploads/
+prompts/
+
 # OS files
 .DS_Store
 Thumbs.db

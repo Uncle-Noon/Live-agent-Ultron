@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Ultron Live Agent — AI-powered personal assistant chat" />
+  <title>Ultron Live Agent — Chat</title>
+
+  <link rel="stylesheet" href="/css/variables.css" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="stylesheet" href="/css/animations.css" />
+  <link rel="stylesheet" href="/css/layout.css" />
+  <link rel="stylesheet" href="/css/components.css" />
+  <link rel="stylesheet" href="/css/chat.css" />
+</head>
+<body>
+  <div class="shell">
+
+    <!-- ── Header ── -->
+    <header class="shell-header">
+      <div class="traffic-lights">
+        <span class="dot red"></span>
+        <span class="dot amber"></span>
+        <span class="dot green"></span>
+      </div>
+      <div class="shell-title">Ultron Live Agent</div>
+      <div class="header-actions">
+        <button type="button" class="btn-secondary" id="switchBtn"
+                style="padding:6px 12px;font-size:11px;font-weight:600">
+          Switch Account
+        </button>
+        <div class="badge">
+          <span class="badge-dot"></span>
+          <span>Online</span>
+        </div>
+      </div>
+    </header>
+
+    <div class="main">
+
+      <!-- ── Chat panel ── -->
+      <section class="panel">
+        <div class="panel-heading">
+          <div>
+            <div class="panel-title">Chat</div>
+            <div class="panel-subtitle">Your conversation with Ultron</div>
+          </div>
+        </div>
+        <div class="message-list" id="messageList" role="log" aria-live="polite">
+          <div class="empty-state">No messages yet. Ask anything!</div>
+        </div>
+      </section>
+
+      <!-- ── Input & Commands panel ── -->
+      <section class="panel">
+        <div class="panel-heading">
+          <div>
+            <div class="panel-title">Send a message</div>
+          </div>
+        </div>
+
+        <form id="chatForm" class="form" novalidate>
+          <!-- Message textarea -->
+          <div class="field">
+            <div class="field-label">
+              <span>Message</span>
+              <span class="char-counter" id="charCounter">0 / 4000</span>
+            </div>
+            <textarea id="messageInput" rows="3"
+              placeholder="Ask Ultron anything…" autocomplete="off"></textarea>
+            <div id="error" class="error" style="display:none" role="alert"></div>
+          </div>
+
+          <!-- File attachment -->
+          <div class="field">
+            <div class="field-label"><span>Attachment</span></div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <input type="file" id="fileInput" style="display:none" aria-label="File attachment" />
+              <button type="button" class="btn-secondary"
+                      onclick="document.getElementById('fileInput').click()"
+                      style="padding:6px 14px;font-size:12px">
+                <span class="btn-icon">📎</span> Upload
+              </button>
+              <span id="fileName"
+                    style="font-size:12px;color:var(--text-muted);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+                No file selected
+              </span>
+              <button type="button" class="btn-secondary" id="clearFileBtn"
+                      style="padding:3px 8px;font-size:11px;display:none" aria-label="Remove file">✕</button>
+            </div>
+          </div>
+
+          <!-- Controls row -->
+          <div class="controls">
+            <div class="status-label">
+              <span class="status-dot ok" id="statusDot"></span>
+              <span id="statusText">Idle. Ready to send</span>
+            </div>
+            <div class="controls-right">
+              <button type="button" class="btn-mic" id="micBtn" aria-label="Voice input">
+                <span class="btn-icon">🎤</span>
+                <span id="micText">Speak</span>
+              </button>
+              <button type="button" class="btn-secondary" id="clearBtn">
+                <span class="btn-icon">✕</span> Clear
+              </button>
+              <button type="submit" class="btn-primary" id="sendBtn">
+                <span class="btn-icon">➤</span> Send
+              </button>
+            </div>
+          </div>
+        </form>
+
+        <!-- ── Quick commands ── -->
+        <div style="margin-top:20px">
+          <div class="panel-heading" style="margin-bottom:8px">
+            <div>
+              <div class="panel-title">Quick commands</div>
+              <div class="panel-subtitle">Type a keyword to trigger an action</div>
+            </div>
+          </div>
+          <div class="hint">Try: <code>open youtube</code> or add your own below.</div>
+          <div class="message-list" id="commandList" style="max-height:160px"></div>
+
+          <form id="commandForm" class="form" style="margin-top:12px" novalidate>
+            <div class="field-row">
+              <div class="field">
+                <label class="field-label" for="commandKeyword">Keyword</label>
+                <input id="commandKeyword" type="text" placeholder="e.g. open maps" autocomplete="off" />
+              </div>
+              <div class="field">
+                <label class="field-label" for="commandUrl">URL</label>
+                <input id="commandUrl" type="text" placeholder="https://maps.google.com" autocomplete="off" />
+              </div>
+            </div>
+            <div style="display:flex;justify-content:flex-end">
+              <button type="submit" class="btn-secondary" style="padding:8px 14px">Add command</button>
+            </div>
+            <div id="commandError" class="error" style="display:none" role="alert"></div>
+          </form>
+        </div>
+      </section>
+
+    </div><!-- .main -->
+  </div><!-- .shell -->
+
+  <script type="module" src="/js/chat.js"></script>
+</body>
+</html>

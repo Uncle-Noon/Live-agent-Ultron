@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Sign in to Ultron Live Agent" />
+  <title>Ultron Live Agent — Sign In</title>
+
+  <link rel="stylesheet" href="/css/variables.css" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="stylesheet" href="/css/animations.css" />
+  <link rel="stylesheet" href="/css/components.css" />
+  <link rel="stylesheet" href="/css/login.css" />
+</head>
+<body>
+  <!-- Animated background circles -->
+  <div class="bg-circles" aria-hidden="true">
+    <div class="bg-circle bg-circle-1"></div>
+    <div class="bg-circle bg-circle-2"></div>
+  </div>
+
+  <div class="login-card" role="main">
+    <div class="login-title">Ultron Live Agent</div>
+    <div class="login-subtitle">Your AI personal assistant. Sign in to continue.</div>
+
+    <form id="loginForm" novalidate>
+      <label class="login-label" for="emailInput">Email address</label>
+      <input id="emailInput" type="email" placeholder="you@example.com"
+             autocomplete="email" spellcheck="false" required />
+
+      <button type="submit" class="btn-primary login-btn" id="loginBtn">
+        <span class="btn-icon">✦</span>
+        Sign in
+      </button>
+
+      <div class="login-status" id="loginStatus" role="status" aria-live="polite"></div>
+      <div class="login-hint">No password required — just your email to save your history.</div>
+    </form>
+  </div>
+
+  <script type="module" src="/js/login.js"></script>
+</body>
+</html>

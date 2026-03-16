@@ -1,0 +1,60 @@
+import { chatStream } from './api.js';
+import { createStreamingBubble } from './ui.js';
+import { pushLocal } from './history.js';
+import { currentEmail } from './auth.js';
+import { speak } from './speech.js';
+
+/**
+ * Sends a text message via SSE streaming and renders it word-by-word.
+ * @param {string}   message
+ * @param {Element}  listEl      — message list container
+ * @param {Function} onDone      — called with final result object
+ * @param {Function} onError     — called with Error
+ */
+export async function sendStream(message, listEl, onDone, onError) {
+  const { txtNode, cursor, scroll } = createStreamingBubble(listEl);
+  const email = currentEmail();
+
+  try {
+    const res = await chatStream(message, email);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+    const reader  = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buf = '', full = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+      const lines = buf.split('\n');
+      buf = lines.pop();
+
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        let parsed;
+        try { parsed = JSON.parse(line.slice(6)); } catch { continue; }
+
+        if (parsed.error)  { txtNode.textContent = `Error: ${parsed.error}`; cursor.remove(); return; }
+        if (parsed.done)   { cursor.remove(); const reply = parsed.reply || txtNode.textContent; txtNode.textContent = reply; pushLocal('bot', reply); speak(reply); onDone?.(parsed); return; }
+        if (parsed.chunk)  {
+          full += parsed.chunk;
+          // Extract "reply" portion from accumulating JSON
+          const m = full.match(/"reply"\s*:\s*"((?:[^"\\]|\\.)*)"/);
+          if (m) {
+            txtNode.textContent = m[1].replace(/\\n/g,'\n').replace(/\\"/g,'"').replace(/\\\\/g,'\\');
+          } else {
+            // Fallback: remove simple JSON wrapper brackets so it doesn't look blank
+            txtNode.textContent = full.replace(/^[{\s"]+/, '').replace(/[}\s"]+$/, '');
+          }
+          scroll();
+        }
+      }
+    }
+    cursor.remove();
+  } catch (err) {
+    cursor.remove();
+    txtNode.textContent = 'Error: ' + err.message;
+    onError?.(err);
+  }
+}
