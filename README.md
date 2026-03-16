@@ -22,8 +22,6 @@ GEMINI_API_KEY=your_key_here
 ```
 
 **3. Install dependencies**
-
-Open terminal and do:
 ```bash
 npm install
 ```
@@ -119,6 +117,23 @@ Live-agent-Ultron/
 4. Copy the key and paste it into your `.env` file
 
 The free tier is generous enough for personal use.
+
+## 📱 App Interface
+
+| Login Page | Chat Interface |
+| :---: | :---: |
+| ![Login Page](docs/screenshots/login.png) | ![Chat Interface](docs/screenshots/chat.png) |
+
+---
+
+## 🛠️ Technical Stack
+- **AI**: Gemini 2.0 Flash (`@google/generative-ai`)
+- **Live URL**: [https://ultron-466211792342.us-central1.run.app/](https://ultron-466211792342.us-central1.run.app/)
+- **Technology Stack**: Node.js, Express, Google Gemini 2.0 Flash, Vanilla JS, CSS3.
+
+## ☁️ Deployment
+- **Platform**: Google Cloud Run
+- **Configuration**: Standardized Docker environment with dynamic port mapping.
 
 ---
 
