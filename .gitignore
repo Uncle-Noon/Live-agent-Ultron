@@ -1,6 +1,7 @@
-# Environment variables - NEVER commit API keys
-.env
-**/.env
+# Environment variables
+# Users can share their .env template, but should clear personal keys.
+# (Removed .env from here as per user request to include it in repo)
+# **/.env.local (staying ignored as usual)
 **/.env.local
 
 # Node dependencies
