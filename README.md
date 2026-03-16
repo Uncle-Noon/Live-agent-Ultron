@@ -120,14 +120,6 @@ Live-agent-Ultron/
 
 The free tier is generous enough for personal use.
 
-## 🚢 Deployment
-
-### 1. GitHub
-Push your code to GitHub to keep it safe and enable continuous deployment. Use the provided `.gitignore` to ensure your API keys and user data stay private.
-
-### 2. Google Cloud Run
-Ultron is production-ready for Google Cloud Run. Follow the **[Deep Dive Deployment Guide](file:///C:/Users/Aditya%20Samal/.gemini/antigravity/brain/6921714d-c28f-4ceb-9522-dfac629e77ce/cloud_run_deployment_guide.md)** to host your AI assistant in minutes.
-
 ---
 
 > Built with ❤️ using Node.js, Google Gemini, and Vanilla JS.
