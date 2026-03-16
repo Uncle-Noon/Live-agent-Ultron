@@ -58,6 +58,9 @@ Create your own personal shortcuts. Map any word to any website — for example,
 ### 🗂️ File Upload & Analysis
 Attach a file to your message and Ultron will read and analyze it for you. Ask questions about its contents, get summaries, or extract specific information — all without leaving the chat.
 
+### 📷 Live Vision ("See" Mode)
+Ultron can now see! Click the camera icon to take a real-time snapshot. Point your camera at anything, and Ultron will analyze the image and describe it to you using its multimodal vision capabilities.
+
 ### 🎙️ Voice Input (Speech-to-Text)
 Click the microphone button and speak your message. Ultron transcribes your speech into the input box so you can review it before sending, or fire it off hands-free.
 
@@ -99,8 +102,9 @@ Live-agent-Ultron/
 ├── frontend/          # Static UI (HTML, CSS, JS modules)
 ├── backend/           # API server (Node.js + Gemini)
 ├── .env               # Your API key goes here
-├── package.json
-└── start.js           # Launches both servers concurrently
+├── Dockerfile         # For Cloud Run deployment
+├── package.json       # production-ready scripts
+└── start.js           # Concurrent launcher (for local development)
 ```
 
 ---
@@ -113,6 +117,14 @@ Live-agent-Ultron/
 4. Copy the key and paste it into your `.env` file
 
 The free tier is generous enough for personal use.
+
+## 🚢 Deployment
+
+### 1. GitHub
+Push your code to GitHub to keep it safe and enable continuous deployment. Use the provided `.gitignore` to ensure your API keys and user data stay private.
+
+### 2. Google Cloud Run
+Ultron is production-ready for Google Cloud Run. Follow the **[Deep Dive Deployment Guide](file:///C:/Users/Aditya%20Samal/.gemini/antigravity/brain/6921714d-c28f-4ceb-9522-dfac629e77ce/cloud_run_deployment_guide.md)** to host your AI assistant in minutes.
 
 ---
 

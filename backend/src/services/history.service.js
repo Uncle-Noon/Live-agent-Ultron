@@ -34,67 +34,11 @@ async function writeToDisk(filePath, entries) {
   await fsp.writeFile(filePath, JSON.stringify(entries, null, 2), 'utf8');
 }
 
-// ── Migration from legacy .md formats ────────────────────────────────────────
-async function migrate(email) {
-  const filePath = getHistoryPath(email);
-  if (!filePath) return;
-  try { await fsp.access(filePath); return; } catch {} // already JSON
-
-  const promptsDir = getUserPromptsDir(email);
-  if (!promptsDir) return;
-
-  // Try single conversation.md
-  const mdPath = path.join(promptsDir, 'conversation.md');
-  let hasMd = false;
-  try { await fsp.access(mdPath); hasMd = true; } catch {}
-
-  if (hasMd) {
-    try {
-      const raw = await fsp.readFile(mdPath, 'utf8');
-      const entries = [];
-      for (const block of raw.split(/\n\s*\n/).filter(Boolean)) {
-        const lines = block.split('\n').map(l => l.trim()).filter(Boolean);
-        if (lines.length < 2 || !lines[0].startsWith('{User Prompt}') || !lines[1].startsWith('{Reply}')) continue;
-        const userText = lines[0].replace('{User Prompt}', '').trim();
-        let replyText = lines.slice(1).join('\n').replace('{Reply}', '').trim();
-        const tsMatch = replyText.match(/\{[^}]*\}\s*$/);
-        if (tsMatch) replyText = replyText.slice(0, tsMatch.index).trim();
-        const m = replyText.match(/- \*Reply:\s*([\s\S]*?)(?=- \*\*|$)/);
-        const reply = m ? m[1].trim() : replyText;
-        if (userText) entries.push({ role: 'user', content: userText, timestamp: 0 });
-        if (reply)   entries.push({ role: 'model', content: reply,    timestamp: 0 });
-      }
-      if (entries.length) await writeToDisk(filePath, entries);
-      log.info('Migrated conversation.md for', sanitizeEmail(email));
-    } catch (err) { log.warn('md migration failed:', err.message); }
-    return;
-  }
-
-  // Try per-file .md
-  try {
-    const files = (await fsp.readdir(promptsDir)).filter(f => f.toLowerCase().endsWith('.md')).sort();
-    if (!files.length) return;
-    const entries = [];
-    for (const file of files) {
-      try {
-        const c = await fsp.readFile(path.join(promptsDir, file), 'utf8');
-        const pi = c.indexOf('# Prompt'), ri = c.indexOf('# Response');
-        if (pi === -1 || ri === -1) continue;
-        const pt = c.slice(pi + 8, ri).trim(), rt = c.slice(ri + 10).trim();
-        if (pt) entries.push({ role: 'user',  content: pt, timestamp: 0 });
-        if (rt) entries.push({ role: 'model', content: rt, timestamp: 0 });
-      } catch {}
-    }
-    if (entries.length) await writeToDisk(filePath, entries);
-  } catch {}
-}
-
 // ── Public API ────────────────────────────────────────────────────────────────
 async function readHistory(email) {
   if (!email) return [];
   const hit = cache.get(email);
   if (hit) return hit;
-  await migrate(email);
   const fp = getHistoryPath(email);
   const entries = fp ? await readFromDisk(fp) : [];
   cache.set(email, entries);

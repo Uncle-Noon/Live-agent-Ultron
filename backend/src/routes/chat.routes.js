@@ -16,6 +16,7 @@ const upload = multer({ dest: uploadsDir });
 // ── AI routes ──────────────────────────────────────────────────────────────────
 router.post('/chat',        chatLimiter, validateMessage, ctrl.handleChat);
 router.post('/chat-stream', chatLimiter, validateMessage, ctrl.handleChatStream);
+router.post('/chat-vision-stream', chatLimiter, ctrl.handleChatVisionStream);
 router.post('/chat-file',   chatLimiter, upload.single('file'), ctrl.handleChatFile);
 
 // ── Auth ───────────────────────────────────────────────────────────────────────

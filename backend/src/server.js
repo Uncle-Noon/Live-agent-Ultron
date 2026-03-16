@@ -28,7 +28,7 @@ app.get('/', (_, res) => res.sendFile(path.join(PUBLIC_DIR, 'login.html')));
 app.get('/chat', (_, res) => res.sendFile(path.join(PUBLIC_DIR, 'chat.html')));
 
 // ── Start ─────────────────────────────────────────────────────────────────────
-const BACKEND_PORT = 3000;
+const BACKEND_PORT = PORT;
 app.listen(BACKEND_PORT, () => {
   console.log(`\nServer is running at http://localhost:${BACKEND_PORT}\n  Ctrl+Click to open\n`);
 });

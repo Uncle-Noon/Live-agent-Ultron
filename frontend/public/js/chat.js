@@ -4,7 +4,7 @@
  */
 import { MAX_MESSAGE_LENGTH } from './modules/config.js';
 import { currentEmail, clearEmail } from './modules/auth.js';
-import { chatFile } from './modules/api.js';
+import { chatFile, chatVisionStream } from './modules/api.js';
 import { setStatus, appendMessage } from './modules/ui.js';
 import { loadCommands, renderCommands, saveCommand, findCommand, allCommands } from './modules/commands.js';
 import { restoreHistory, pushLocal, clearAll } from './modules/history.js';
@@ -33,14 +33,31 @@ const clearBtn     = $('clearBtn');
 const micBtn       = $('micBtn');
 const micText      = $('micText');
 const switchBtn    = $('switchBtn');
-const fileInput    = $('fileInput');
-const fileNameEl   = $('fileName');
-const clearFileBtn = $('clearFileBtn');
+const cameraBtn    = $('cameraBtn');
+const camVideo     = $('cameraVideo');
+const camCanvas    = $('cameraCanvas');
+const cameraModal     = $('cameraModal');
+const closeCameraBtn  = $('closeCameraBtn');
+const cancelCameraBtn = $('cancelCameraBtn');
+const captureBtn      = $('captureBtn');
+
+const attachmentPreview = $('attachmentPreview');
+const filePreview       = $('filePreview');
+const imagePreview      = $('imagePreview');
+const fileInput         = $('fileInput');
+const fileNameEl        = $('fileName');
+const clearFileBtn      = $('clearFileBtn');
+const clearImgBtn       = $('clearImgBtn');
+const heldImageThumb    = $('heldImageThumb');
+
 const cmdList      = $('commandList');
 const cmdForm      = $('commandForm');
 const cmdKeyword   = $('commandKeyword');
 const cmdUrl       = $('commandUrl');
 const cmdError     = $('commandError');
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let heldImageData = null;
 
 // ── Status helper ─────────────────────────────────────────────────────────────
 const st = (state, msg) => setStatus(statusDot, statusText, { state, message: msg });
@@ -61,13 +78,34 @@ msgInput.addEventListener('keydown', (e) => {
   }
 });
 
-// ── File upload ───────────────────────────────────────────────────────────────
+// ── Attachment Handling ───────────────────────────────────────────────────────
 fileInput.addEventListener('change', () => {
-  if (fileInput.files.length) { fileNameEl.textContent = fileInput.files[0].name; clearFileBtn.style.display = 'inline-flex'; }
-  else resetFile();
+  if (fileInput.files.length) {
+    resetImg(); // Clear camera if file selected
+    fileNameEl.textContent = fileInput.files[0].name;
+    attachmentPreview.style.display = 'flex';
+    filePreview.style.display = 'flex';
+  } else {
+    resetFile();
+  }
 });
+
 clearFileBtn.addEventListener('click', resetFile);
-function resetFile() { fileInput.value = ''; fileNameEl.textContent = 'No file selected'; clearFileBtn.style.display = 'none'; }
+clearImgBtn.addEventListener('click', resetImg);
+
+function resetFile() {
+  fileInput.value = '';
+  fileNameEl.textContent = 'No file selected';
+  filePreview.style.display = 'none';
+  if (!heldImageData) attachmentPreview.style.display = 'none';
+}
+
+function resetImg() {
+  heldImageData = null;
+  heldImageThumb.src = '';
+  imagePreview.style.display = 'none';
+  if (!fileInput.files.length) attachmentPreview.style.display = 'none';
+}
 
 // ── Speech ────────────────────────────────────────────────────────────────────
 const hasMic = initSpeech({
@@ -78,6 +116,56 @@ const hasMic = initSpeech({
 });
 if (!hasMic) micBtn.style.display = 'none';
 micBtn.addEventListener('click', () => isListening() ? stopRecording() : startRecording());
+
+// ── Camera (Vision) ───────────────────────────────────────────────────────────
+let camStream = null;
+
+async function startCamera() {
+  try {
+    resetFile(); // Clear file if camera opened
+    camStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } } });
+    camVideo.srcObject = camStream;
+    cameraModal.style.display = 'flex';
+    st('ok', 'Camera active');
+  } catch (err) {
+    st('error', `Camera access denied: ${err.message}`);
+    throw err;
+  }
+}
+
+function stopCamera() {
+  if (camStream) {
+    camStream.getTracks().forEach(t => t.stop());
+    camStream = null;
+  }
+  camVideo.srcObject = null;
+  cameraModal.style.display = 'none';
+  st('ok', 'Idle. Ready to send');
+}
+
+async function captureImage() {
+  st('ok', 'Capturing frame…');
+  camCanvas.width  = camVideo.videoWidth;
+  camCanvas.height = camVideo.videoHeight;
+  const ctx = camCanvas.getContext('2d');
+  ctx.drawImage(camVideo, 0, 0);
+  
+  const dataUrl = camCanvas.toDataURL('image/jpeg', 0.8);
+  heldImageData = dataUrl.split(',')[1];
+  
+  // Show thumbnail in UI
+  heldImageThumb.src = dataUrl;
+  attachmentPreview.style.display = 'flex';
+  imagePreview.style.display = 'flex';
+  
+  stopCamera();
+  msgInput.focus();
+}
+
+cameraBtn.addEventListener('click', () => startCamera().catch(() => {}));
+closeCameraBtn.addEventListener('click', stopCamera);
+cancelCameraBtn.addEventListener('click', stopCamera);
+captureBtn.addEventListener('click', captureImage);
 
 // ── Clear history ─────────────────────────────────────────────────────────────
 clearBtn.addEventListener('click', () => clearAll(listEl));
@@ -126,29 +214,34 @@ form.addEventListener('submit', async (e) => {
   errorEl.style.display = 'none';
   const message  = msgInput.value.trim();
   const hasFile  = fileInput.files.length > 0;
+  const hasImage = !!heldImageData;
   const email    = currentEmail();
 
-  if (!message && !hasFile) { errorEl.textContent = 'Please enter a message or attach a file.'; errorEl.style.display = 'block'; return; }
+  if (!message && !hasFile && !hasImage) { errorEl.textContent = 'Please enter a message or attach an item.'; errorEl.style.display = 'block'; return; }
   if (message.length > MAX_MESSAGE_LENGTH) { errorEl.textContent = `Message is too long (max ${MAX_MESSAGE_LENGTH} chars).`; errorEl.style.display = 'block'; return; }
 
-  const displayMsg = hasFile ? `[File: ${fileInput.files[0].name}] ${message}` : message;
+  let displayMsg = message;
+  if (hasFile) displayMsg = `[File: ${fileInput.files[0].name}] ${message}`;
+  else if (hasImage) displayMsg = `[Camera Snapshot] ${message || '(Describe this image)'}`;
+
   appendMessage(listEl, 'user', displayMsg, { onSave: () => pushLocal('user', displayMsg) });
 
   sendBtn.disabled = true;
+  cameraBtn.disabled = true;
   st('ok', 'Sending…');
 
   let abortController = null;
 
   try {
-    // ── Local command match: instant, no AI call needed ───────────────────────
-    const cmd = findCommand(message);
+    // ── Local command match (Text only) ───────────────────────
+    const cmd = (!hasFile && !hasImage) ? findCommand(message) : null;
+    
     if (cmd) {
       window.open(cmd.url, '_blank');
       const reply = `Opening ${cmd.label || cmd.keyword}!`;
       appendMessage(listEl, 'bot', reply, { onSave: () => pushLocal('bot', reply) });
       speak(reply);
     } else if (hasFile) {
-      // ── File upload ──────────────────────────────────────────────────────────
       const fd = new FormData();
       fd.append('file', fileInput.files[0]);
       fd.append('message', message);
@@ -158,54 +251,33 @@ form.addEventListener('submit', async (e) => {
       speak(result.reply);
       resetFile();
     } else {
-      // ── Regular AI query via streaming ───────────────────────────────────────
+      // ── Streaming (Standard or Vision) ───────────────────────────────────────
       abortController = new AbortController();
       stopBtn.style.display = 'inline-flex';
       sendBtn.style.display = 'none';
+      stopBtn.onclick = () => { abortController.abort(); st('ok', 'Interrupted by user'); };
 
-      stopBtn.onclick = () => {
-        abortController.abort();
-        st('ok', 'Interrupted by user');
-      };
-
-      await sendStream(message, listEl,
+      await sendStream(message || 'Analyze this image.', listEl,
         (result) => {
           if (result?.command) {
             const c2 = findCommand(result.command);
-            if (c2) {
-              const replyLower = (result.reply || '').toLowerCase();
-              const labelMatch = (c2.label || c2.keyword || '').toLowerCase();
-              const replyMatchesCmd = replyLower.includes(labelMatch) ||
-                (c2.aliases || []).some(a => replyLower.includes(a.toLowerCase()));
-              if (replyMatchesCmd) {
-                window.open(c2.url, '_blank');
-              } else {
-                const c3 = findCommand(result.reply);
-                window.open((c3 || c2).url, '_blank');
-              }
-            }
+            if (c2) window.open(c2.url, '_blank');
           }
           st('ok', 'Done');
         },
-        (err) => { 
-          if (err.name !== 'AbortError') {
-            errorEl.textContent = 'Error: ' + err.message; 
-            errorEl.style.display = 'block'; 
-            st('error', 'Failed'); 
-          }
-        },
-        abortController.signal
+        (err) => { if (err.name !== 'AbortError') { errorEl.textContent = 'Error: ' + err.message; errorEl.style.display = 'block'; st('error', 'Failed'); } },
+        abortController.signal,
+        heldImageData
       );
+      if (hasImage) resetImg();
     }
     msgInput.value = ''; charCounter.textContent = `0 / ${MAX_MESSAGE_LENGTH}`; charCounter.classList.remove('warn','over');
     if (!abortController?.signal.aborted) st('ok', 'Idle. Ready to send');
   } catch (err) {
-    if (err.name !== 'AbortError') {
-      errorEl.textContent = 'Error: ' + err.message; errorEl.style.display = 'block';
-      st('error', 'Failed to reach server — is it running?');
-    }
+    if (err.name !== 'AbortError') { errorEl.textContent = 'Error: ' + err.message; errorEl.style.display = 'block'; st('error', 'Failed'); }
   } finally {
     sendBtn.disabled = false;
+    cameraBtn.disabled = false;
     sendBtn.style.display = 'inline-flex';
     stopBtn.style.display = 'none';
     msgInput.focus();

@@ -2,18 +2,18 @@
   "name": "live-agent-ultron",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "backend/src/server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "node --no-warnings start.js",
-    "start": "node start.js"
+    "start": "node backend/src/server.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
-    "@google/genai": "^1.45.0",
+    "@google/generative-ai": "^0.24.1",
     "compression": "^1.8.1",
     "cors": "^2.8.6",
     "dotenv": "^17.3.1",

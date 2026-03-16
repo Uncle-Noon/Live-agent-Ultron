@@ -1,4 +1,4 @@
-import { chatStream } from './api.js';
+import { chatStream, chatVisionStream } from './api.js';
 import { pushLocal } from './history.js';
 import { currentEmail } from './auth.js';
 import { speak } from './speech.js';
@@ -11,13 +11,15 @@ import { createStreamingBubble, createThinkingBubble } from './ui.js';
  * @param {Function} onDone      — called with final result object
  * @param {Function} onError     — called with Error
  */
-export async function sendStream(message, listEl, onDone, onError, signal) {
+export async function sendStream(message, listEl, onDone, onError, signal, imageData) {
   const thinking = createThinkingBubble(listEl);
   let streaming = null;
   const email = currentEmail();
 
   try {
-    const res = await chatStream(message, email, signal);
+    const res = imageData 
+      ? await chatVisionStream(message, email, imageData, signal)
+      : await chatStream(message, email, signal);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
     const reader  = res.body.getReader();

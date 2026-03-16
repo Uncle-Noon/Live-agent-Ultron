@@ -1,14 +1,13 @@
-const { GoogleGenAI } = require('@google/genai');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
 const makeLogger = require('../utils/logger');
 const { AI_MODEL, AI_RETRIES } = require('../config/app.config');
 
 const log = makeLogger('ai.service');
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 function buildSystemInstruction(availableCommands = []) {
   const cmdListStr = availableCommands.length
     ? availableCommands.map(c => {
-      // Always show the URL so the AI can identify sites even for opaque keywords like "boga"
       const site = c.url ? `${c.url}` : (c.label || c.keyword);
       const labelNote = (c.label && c.label.toLowerCase() !== c.keyword.toLowerCase()) ? ` (${c.label})` : '';
       return `- "${c.keyword}" → opens ${site}${labelNote}`;
@@ -36,7 +35,6 @@ CRITICAL RULES:
 - The "reply" and "command" fields must refer to the SAME site. The reply must name the site from the URL, not the keyword name.
 - If a keyword is ambiguous (e.g. "khul ja sim sim"), look at its URL to decide if it matches the user's intent. Do NOT guess based on the keyword's sound.
 - If the URL contains "youtube.com" it is for videos. If it contains "instagram.com" it is for social/reels.
-- Do not wander into medical, legal, or life‑or‑death advice. Stick to your purpose as a personla assistant.
 
 Reply ONLY with a JSON object in this EXACT format — no markdown fences:
 {
@@ -63,10 +61,8 @@ async function withRetry(fn) {
     } catch (err) {
       const isQuota = err.status === 429;
       if (isQuota && i < AI_RETRIES - 1) {
-        const detail = err.details?.find(d => d['@type'] === 'type.googleapis.com/google.rpc.RetryInfo');
-        const delay = parseFloat((detail?.retryDelay || '10s').replace('s', '')) * 1000 || 10_000;
-        log.warn(`Quota exceeded, retrying in ${delay / 1000}s…`);
-        await new Promise(r => setTimeout(r, delay));
+        log.warn(`Quota exceeded, retrying in 10s…`);
+        await new Promise(r => setTimeout(r, 10_000));
       } else throw err;
     }
   }
@@ -83,34 +79,30 @@ function parseResponse(rawText) {
 }
 
 async function generateReply(contents, { commands = [] } = {}) {
-  const response = await withRetry(() =>
-    ai.models.generateContent({
-      model: AI_MODEL,
-      contents,
-      config: {
-        systemInstruction: buildSystemInstruction(commands),
-        responseMimeType: 'application/json'
-      }
-    })
-  );
-  return parseResponse(response.text);
+  const model = genAI.getGenerativeModel({
+    model: AI_MODEL,
+    systemInstruction: buildSystemInstruction(commands),
+    generationConfig: { responseMimeType: 'application/json' }
+  });
+
+  const result = await withRetry(() => model.generateContent({ contents }));
+  const response = await result.response;
+  return parseResponse(response.text());
 }
 
 async function generateReplyStream(contents, { onChunk, onDone, onError, commands = [] }) {
   try {
-    const stream = await withRetry(() =>
-      ai.models.generateContentStream({
-        model: AI_MODEL,
-        contents,
-        config: {
-          systemInstruction: buildSystemInstruction(commands),
-          responseMimeType: 'application/json'
-        }
-      })
-    );
+    const model = genAI.getGenerativeModel({
+      model: AI_MODEL,
+      systemInstruction: buildSystemInstruction(commands),
+      generationConfig: { responseMimeType: 'application/json' }
+    });
+
+    const result = await withRetry(() => model.generateContentStream({ contents }));
+    
     let full = '';
-    for await (const chunk of stream) {
-      const piece = chunk.text || '';
+    for await (const chunk of result.stream) {
+      const piece = chunk.text();
       if (piece) { full += piece; onChunk(piece); }
     }
     onDone(parseResponse(full));

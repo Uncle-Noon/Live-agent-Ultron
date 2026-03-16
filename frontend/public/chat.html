@@ -71,37 +71,52 @@
             <div id="error" class="error" style="display:none" role="alert"></div>
           </div>
 
-          <!-- File attachment -->
-          <div class="field">
-            <div class="field-label"><span>Attachment</span></div>
-            <div style="display:flex;gap:8px;align-items:center">
-              <input type="file" id="fileInput" style="display:none" aria-label="File attachment" />
-              <button type="button" class="btn-secondary"
-                      onclick="document.getElementById('fileInput').click()"
-                      style="padding:6px 14px;font-size:12px">
-                <span class="btn-icon">📎</span> Upload
-              </button>
-              <span id="fileName"
-                    style="font-size:12px;color:var(--text-muted);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
-                No file selected
-              </span>
-              <button type="button" class="btn-secondary" id="clearFileBtn"
-                      style="padding:3px 8px;font-size:11px;display:none" aria-label="Remove file">✕</button>
+          <!-- Attachment Preview (Image or File) -->
+          <div class="attachment-preview" id="attachmentPreview" style="display:none">
+            <div id="filePreview" style="display:none;align-items:center;gap:8px">
+              <span class="btn-icon">📎</span>
+              <span id="fileName" style="font-size:12px;color:var(--text-muted);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">No file selected</span>
+              <button type="button" class="btn-clear" id="clearFileBtn" aria-label="Remove file">✕</button>
+            </div>
+            <div id="imagePreview" style="display:none;align-items:center;gap:12px">
+              <div class="thumbnail-wrapper">
+                <img id="heldImageThumb" src="" alt="Captured snapshot" />
+              </div>
+              <span style="font-size:12px;color:var(--text-muted)">Image captured. Ready to send.</span>
+              <button type="button" class="btn-clear" id="clearImgBtn" aria-label="Remove image">✕</button>
             </div>
           </div>
 
+          <input type="file" id="fileInput" style="display:none" aria-label="File attachment" />
+
           <!-- Controls row -->
-          <div class="controls">
-            <div class="status-label">
+          <div class="controls-container">
+            <!-- Row 0: Status -->
+            <div class="status-label" style="margin-bottom: 4px;">
               <span class="status-dot ok" id="statusDot"></span>
-              <span id="statusText">Idle. Ready to send</span>
+              <span id="statusText">Idle</span>
             </div>
-            <div class="controls-right">
-              <button type="button" class="btn-mic" id="micBtn" aria-label="Voice input">
+
+            <!-- Row 1: Attachments -->
+            <div class="controls-row">
+              <button type="button" class="btn-camera" id="cameraBtn" title="Let Ultron see via camera">
+                <span class="btn-icon">📷</span>
+                <span>Camera</span>
+              </button>
+              <button type="button" class="btn-secondary" onclick="document.getElementById('fileInput').click()" 
+                      style="padding:8px 12px;font-size:12px" title="Upload a file for analysis">
+                <span class="btn-icon">📎</span>
+                <span>Upload</span>
+              </button>
+            </div>
+
+            <!-- Row 2: Main Actions -->
+            <div class="controls-row main-actions">
+              <button type="button" class="btn-mic" id="micBtn" aria-label="Voice input" title="Voice input (Speech-to-Text)">
                 <span class="btn-icon">🎤</span>
                 <span id="micText">Speak</span>
               </button>
-              <button type="button" class="btn-secondary" id="clearBtn">
+              <button type="button" class="btn-secondary" id="clearBtn" title="Clear all chat history">
                 <span class="btn-icon">✕</span> Clear
               </button>
               <button type="button" class="btn-stop" id="stopBtn" style="display:none" aria-label="Stop AI response">
@@ -146,6 +161,26 @@
 
     </div><!-- .main -->
   </div><!-- .shell -->
+
+  <!-- ── Camera Preview Modal ── -->
+  <div id="cameraModal" class="modal-overlay" style="display:none">
+    <div class="modal-content camera-modal">
+      <div class="modal-header">
+        <div class="modal-title">Camera Preview</div>
+        <button type="button" class="modal-close" id="closeCameraBtn">✕</button>
+      </div>
+      <div class="camera-preview-container">
+        <video id="cameraVideo" autoplay playsinline></video>
+        <canvas id="cameraCanvas" style="display:none"></canvas>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn-secondary" id="cancelCameraBtn">Cancel</button>
+        <button type="button" class="btn-primary" id="captureBtn">
+          <span class="btn-icon">📷</span> Capture Frame
+        </button>
+      </div>
+    </div>
+  </div>
 
   <script type="module" src="/js/chat.js"></script>
 </body>

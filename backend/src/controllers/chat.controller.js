@@ -54,6 +54,39 @@ const handleChatStream = async (req, res) => {
   });
 };
 
+// ── Chat with vision (streaming) ──────────────────────────────────────────────
+const handleChatVisionStream = async (req, res) => {
+  const { message, email, imageData } = req.body;
+  if (!imageData) return res.status(400).json({ error: 'No image data.' });
+
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no');
+  res.flushHeaders?.();
+
+  const send = (obj) => res.write(`data: ${JSON.stringify(obj)}\n\n`);
+  const history  = await histSvc.readHistory(email).catch(() => []);
+  const commands = await cmdSvc.getCommands(email).catch(() => []);
+
+  const imagePart = { inlineData: { data: imageData, mimeType: 'image/jpeg' } };
+  const contents = [
+    ...histSvc.buildGeminiContents(history),
+    { role: 'user', parts: [{ text: message || 'Analyze this image.' }, imagePart] },
+  ];
+
+  await aiSvc.generateReplyStream(contents, {
+    commands,
+    onChunk: (chunk) => send({ chunk }),
+    onDone: async (result) => {
+      await histSvc.appendHistory(email, `[Camera Vision] ${message || ''}`, result.reply).catch(() => {});
+      send({ done: true, ...result });
+      res.end();
+    },
+    onError: (err) => { send({ error: err.message || 'Stream error.' }); res.end(); },
+  });
+};
+
 // ── Chat with file attachment ─────────────────────────────────────────────────
 const handleChatFile = async (req, res) => {
   const { message, email } = req.body;
@@ -98,16 +131,6 @@ const handleLogin = async (req, res) => {
   }
   const promptsDir = getUserPromptsDir(email);
   if (promptsDir) await fsp.mkdir(promptsDir, { recursive: true }).catch(() => {});
-
-  // Migrate old global prompts folder if present
-  const globalDir = path.join(__dirname, '..', '..', 'prompts');
-  try {
-    const entries = await fsp.readdir(globalDir);
-    await Promise.all(entries.map(async (e) => {
-      const to = path.join(promptsDir, e);
-      try { await fsp.access(to); } catch { await fsp.rename(path.join(globalDir, e), to).catch(() => {}); }
-    }));
-  } catch {}
 
   res.json({ success: true, email });
 };
@@ -173,7 +196,7 @@ const deleteCommand = async (req, res) => {
 };
 
 module.exports = {
-  handleChat, handleChatStream, handleChatFile,
+  handleChat, handleChatStream, handleChatFile, handleChatVisionStream,
   handleLogin, getHistory, deleteHistory,
   getCommands, addCommand, deleteCommand,
 };
