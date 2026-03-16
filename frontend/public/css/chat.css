@@ -31,9 +31,8 @@
   padding-top: 8px;
 }
 .msg-content {
-  position: relative;
   flex: 1;
-  padding: 7px 28px 7px 9px;
+  padding: 7px 9px;
   border-radius: var(--radius-md);
   line-height: 1.65;
   white-space: pre-wrap;
@@ -62,37 +61,3 @@
 .cmd-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px; border-bottom: 1px solid rgba(148,163,184,0.1); }
 .cmd-keyword { font-weight: 600; font-size: 13px; }
 .cmd-url     { font-size: 11px; color: rgba(148,163,184,0.85); }
-
-/* ── Copy button ── */
-.copy-btn {
-  position: absolute;
-  top: 5px;
-  right: 5px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  padding: 0;
-  background: transparent;
-  border: 1px solid transparent;
-  border-radius: var(--radius-sm, 4px);
-  color: var(--text-muted);
-  cursor: pointer;
-  opacity: 0;
-  transition: opacity 0.15s, color 0.15s, background 0.15s, border-color 0.15s;
-  line-height: 1;
-}
-.msg-content:hover .copy-btn {
-  opacity: 1;
-}
-.copy-btn:hover {
-  color: var(--accent);
-  background: rgba(99,179,237,0.12);
-  border-color: rgba(99,179,237,0.25);
-}
-.copy-btn.copied {
-  color: #4ade80;
-  border-color: rgba(74,222,128,0.3);
-  opacity: 1;
-}

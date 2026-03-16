@@ -7,4 +7,4 @@ function run(cmd, args, label) {
 }
 
 // Start Backend on Port 3000 (Uses nodemon for auto-restarts on save)
-run('npx nodemon -q', ['backend/src/server.js'], 'Backend');
+require("./backend/src/server.js");
