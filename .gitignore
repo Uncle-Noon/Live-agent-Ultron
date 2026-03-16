@@ -1,22 +1,21 @@
 # Environment variables
-# Users can share their .env template, but should clear personal keys.
-# (Removed .env from here as per user request to include it in repo)
-# **/.env.local (staying ignored as usual)
-**/.env.local
+.env
+.env.local
 
 # Node dependencies
 node_modules/
+dist/
 
 # Logs
 npm-debug.log*
+yarn-debug.log*
 nodemon-debug.log*
 
-# Debug artifacts
-gemini-error.txt
-
-# User data (generated at runtime - do not commit)
-**/users/
-**/uploads/
+# User data & Uploads (Runtime only)
+users/
+uploads/
+conversations/
+prompts/
 
 # OS files
 .DS_Store
