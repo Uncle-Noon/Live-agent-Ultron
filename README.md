@@ -39,6 +39,41 @@ That's it. You're in.
 
 ---
 
+## 🧪 Reproducible Testing
+
+Once the app is running, follow these steps to verify its core capabilities:
+
+### 1. Basic AI Chat
+- **Action:** Type *"Hello, who are you?"* in the chat box and press Enter.
+- **Expectation:** Ultron should reply word-by-word (streaming) and explain its role as your assistant.
+
+### 2. Intelligent Command Execution
+- **Action:** Type *"Open the place where I watch videos"* and press Enter.
+- **Expectation:** A new tab should open to **YouTube.com**. Ultron should confirm the action in the chat.
+
+### 3. Custom Keyword Creation
+- **Action:** Go to the **Commands** section (top right sidebar). 
+- **Action:** Add Keyword: `hamburger`, URL: `instagram.com`, Label: `Instagram`.
+- **Action:** Go back to chat and type *"hamburger"*.
+- **Expectation:** Instagram should open instantly without a delay, bypassing the AI intent mapping.
+
+### 4. Live Vision (Multimodal)
+- **Action:** Click the **Camera** icon.
+- **Action:** Hold an object (like a phone or a pen) in front of your webcam and click the blue shutter button.
+- **Expectation:** Ultron will analyze the "Vision" snapshot and describe exactly what it sees.
+
+### 5. File Analysis
+- **Action:** Click the **Paperclip** icon and upload a small `.txt` or `.js` file.
+- **Action:** Send a message like *"Summarize this file"*.
+- **Expectation:** Ultron will read the file content and provide a summary.
+
+### 6. Voice Interaction
+- **Action:** Click the **Microphone** icon (allow browser permissions).
+- **Action:** Speak a message, wait for it to transcribe, and click send.
+- **Action:** Ensure your volume is up to hear Ultron's **Voice Output**.
+
+---
+
 ## ✨ Features
 
 ### 🤖 AI Chat
