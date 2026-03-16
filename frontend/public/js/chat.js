@@ -138,7 +138,21 @@ form.addEventListener('submit', async (e) => {
         (result) => {
           if (result?.command) {
             const c2 = findCommand(result.command);
-            if (c2) window.open(c2.url, '_blank');
+            if (c2) {
+              // Safety check: make sure the reply text is consistent with the resolved command.
+              // If the reply says "YouTube" but the command resolved to Instagram, trust the reply instead.
+              const replyLower = (result.reply || '').toLowerCase();
+              const labelMatch = (c2.label || c2.keyword || '').toLowerCase();
+              const replyMatchesCmd = replyLower.includes(labelMatch) ||
+                (c2.aliases || []).some(a => replyLower.includes(a.toLowerCase()));
+              if (replyMatchesCmd) {
+                window.open(c2.url, '_blank');
+              } else {
+                // Reply and command disagree — try to find the right command from the reply
+                const c3 = findCommand(result.reply);
+                window.open((c3 || c2).url, '_blank');
+              }
+            }
           }
           st('ok', 'Done');
         },

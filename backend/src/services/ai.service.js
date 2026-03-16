@@ -7,20 +7,35 @@ const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 function buildSystemInstruction(availableCommands = []) {
   const cmdListStr = availableCommands.length
-    ? availableCommands.map(c => `- "${c.keyword}"`).join('\n')
-    : '- "open youtube"\n- "open instagram"';
+    ? availableCommands.map(c => {
+      // Always show the URL so the AI can identify sites even for opaque keywords like "boga"
+      const site = c.url ? `${c.url}` : (c.label || c.keyword);
+      const labelNote = (c.label && c.label.toLowerCase() !== c.keyword.toLowerCase()) ? ` (${c.label})` : '';
+      return `- "${c.keyword}" → opens ${site}${labelNote}`;
+    }).join('\n')
+    : '- "open youtube" → opens https://www.youtube.com (YouTube)\n- "open instagram" → opens https://www.instagram.com (Instagram)';
 
   return `You are Ultron, a personal AI assistant running inside a smart browser UI that has built-in website-opening capabilities.
 
 IMPORTANT — you run inside a command-capable interface. It has predefined quick commands that open websites instantly in a new tab. When you set the "command" field, the UI immediately opens the site — you do NOT need to tell the user to do it manually. The action is automatic.
 
-Available commands the user has defined FOR THIS SESSION (use EXACT keywords below):
+Available commands the user has defined FOR THIS SESSION (copy one of these EXACT strings into "command"):
 ${cmdListStr}
 
 When the user asks to open any website, social media, or web app:
-1. Set "command" to the EXACT matching keyword from the list above.
-2. Set "reply" to a SHORT, confident confirmation like: "Opening YouTube for you!" — never say you can't do it.
-3. Set "intent" to "COMMAND"
+1. Look at the URL in the AVAILABLE COMMANDS list above (the part after "→ opens") to understand what each keyword actually opens.
+2. Match the user's intent to the SITE that best fits — do NOT repeat a command just because conversation history mentioned it before.
+3. Set "command" to the EXACT keyword string of the best matching command — copy it character-for-character.
+4. Set "reply" to a SHORT confirmation naming the SAME site as the URL in that command (e.g. if the command opens https://www.youtube.com, say "Opening YouTube for you!").
+5. Set "intent" to "COMMAND"
+6. If NO command in the list is a reasonable match, set "command" to null and answer normally.
+
+CRITICAL RULES:
+- PRIORITIZE INTENT: If the user mentions "reels", "stories", "chatting", or "photos", strongly favor Instagram. If they mention "videos", "shorts", or "watching", strongly favor YouTube.
+- NEVER choose a command just because it was used before in the conversation. Always re-evaluate fresh from the list each turn.
+- The "reply" and "command" fields must refer to the SAME site. The reply must name the site from the URL, not the keyword name.
+- If a keyword is ambiguous (e.g. "khul ja sim sim"), look at its URL to decide if it matches the user's intent. Do NOT guess based on the keyword's sound.
+- If the URL contains "youtube.com" it is for videos. If it contains "instagram.com" it is for social/reels.
 
 Reply ONLY with a JSON object in this EXACT format — no markdown fences:
 {
@@ -36,7 +51,8 @@ Rules:
 - For COMMAND intent: reply is a brief confirmation only (e.g. "Opening Instagram!", "Launching YouTube!").
 - Concise for simple questions; detailed when the user asks for essays, code, etc.
 - Respect word limits the user specifies.
-- If asked to write something, actually write it.`;
+- If asked to write something, actually write it instead of saying something like i will help you to do...
+- Follow the user's commands strictly`;
 }
 
 async function withRetry(fn) {
@@ -70,9 +86,9 @@ async function generateReply(contents, { commands = [] } = {}) {
     ai.models.generateContent({
       model: AI_MODEL,
       contents,
-      config: { 
+      config: {
         systemInstruction: buildSystemInstruction(commands),
-        responseMimeType: 'application/json' 
+        responseMimeType: 'application/json'
       }
     })
   );
@@ -85,9 +101,9 @@ async function generateReplyStream(contents, { onChunk, onDone, onError, command
       ai.models.generateContentStream({
         model: AI_MODEL,
         contents,
-        config: { 
+        config: {
           systemInstruction: buildSystemInstruction(commands),
-          responseMimeType: 'application/json' 
+          responseMimeType: 'application/json'
         }
       })
     );

@@ -14,17 +14,24 @@ This project is built with **100% Decoupled Discrete Microservices** layout arch
 
 ## 🚀 Quick Start
 
-1. **Install Dependencies**:
+1. **Clone the Repository**:
+   ```bash
+   git clone <your-repo-url>
+   cd Live-agent-Ultron
+   ```
+2. **Install Dependencies**:
    ```bash
    npm install
-   ```
-2. **Environment variables**:
-   Open the `.env` file inside the root directory and paste your own Gemini API key in place of `YOUR_GEMINI_API_KEY`:
-   ```env
-   GEMINI_API_KEY=YOUR_GEMINI_API_KEY
    ```
 3. **Run Services**:
    Simply run standard startup at the root folder to spawn both servers concurrently:
    ```bash
    npm run dev
    ```
+4. **Open in Browser**:
+   Control + Click the link in the terminal or open `http://localhost:3000` to get into business.
+
+---
+
+> [!IMPORTANT]
+> A `.env` file is included in the project. Make sure to paste your own Gemini API key into the `GEMINI_API_KEY` field before running the app.
